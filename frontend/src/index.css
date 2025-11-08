@@ -1,0 +1,33 @@
+/* Vite'in varsayılan demo stillerini (renk, arkaplan, flex) kaldırıyoruz,
+  çünkü bunlar Stitch/AI tarafından üretilen Tailwind kodumuzla çakışıyor.
+*/
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tailwind'in (ve LoginPage bileşenimizin) tüm ekranı kaplayabilmesi için
+  html, body ve React'in ana #root elemanının %100 yükseklik 
+  ve genişlikte olmasını ve kenar boşluklarının sıfırlanmasını sağlıyoruz.
+*/
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Vite'in varsayılan body stilleri (display: flex, background-color: #242424 vb.) 
+  Tailwind stillerimizle çakıştığı için kaldırıldı.
+*/
+
+/* Varsayılan link stilleri ve diğer demo stilleri (h1, button) de kaldırıldı,
+  çünkü artık tüm stil yönetimini Tailwind class'ları ile yapıyoruz.
+*/
+

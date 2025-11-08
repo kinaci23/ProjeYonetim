@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en" class="light">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YMH455 Proje Yönetim Sistemi</title>
+
+    <!-- 
+      AI TASARIMINDAN EKLENEN FONT VE İKON KÜTÜPHANELERİ 
+    -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+    
+    <!-- 
+      AI TASARIMINDAN EKLENEN TAILWIND CDN SCRIPT'İ 
+      Not: Normalde Vite'da Tailwind'i NPM ile kurarız, ama AI'ın
+      ürettiği bu CDN + Config yöntemi, stilleri hızlıca 
+      çalıştırmak için en kolay yoldur.
+    -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    
+    <style type="text/tailwindcss">
+      /* Materyal İkonlar için temel ayar */
+      .material-symbols-outlined {
+        font-variation-settings:
+        'FILL' 0,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 24
+      }
+    </style>
+    
+    <script>
+      /* AI'ın ürettiği Tailwind renk ve font ayarları */
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#6d28d9", // Deep Purple
+              "primary-focus": "#5b21b6",
+              "background-light": "#ffffff",
+              "background-dark": "#181820",
+            },
+            fontFamily: {
+              "display": ["Inter", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+    
+  </head>
+  <body class="font-display">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
