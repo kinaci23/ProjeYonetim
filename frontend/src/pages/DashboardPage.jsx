@@ -4,16 +4,41 @@ import { Link, useNavigate } from 'react-router-dom';
 import authService from '@/services/authService';
 import projectService from '@/services/projectService'; 
 import NewProjectModal from '@/components/NewProjectModal';
+import userService from '@/services/userService'; // YENİ EKLENDİ
 
 function DashboardPage() {
     const navigate = useNavigate();
 
     // --- State'ler ---
+    const [userName, setUserName] = useState('Kullanıcı Adı'); // YENİ EKLENDİ
     const [projects, setProjects] = useState([]); 
     const [isLoading, setIsLoading] = useState(true); 
     const [error, setError] = useState(null); 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [refreshTrigger, setRefreshTrigger] = useState(0); 
+
+    // YENİ useEffect (Kullanıcı Adını Çekmek İçin)
+    useEffect(() => {
+        const fetchUserName = async () => {
+            try {
+                const userData = await userService.getProfile();
+                if (userData.first_name && userData.last_name) {
+                    setUserName(`${userData.first_name} ${userData.last_name}`);
+                } else if (userData.first_name) {
+                    setUserName(userData.first_name);
+                } else {
+                    setUserName(userData.email);
+                }
+            } catch (err) {
+                console.error("Kullanıcı adı çekilemedi:", err);
+                if (err.response && err.response.status === 401) {
+                    authService.logout();
+                    navigate('/login');
+                }
+            }
+        };
+        fetchUserName();
+    }, [navigate]);
 
     // --- Veri Çekme ---
     useEffect(() => {
@@ -91,7 +116,6 @@ function DashboardPage() {
         return (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-6">
                 {projects.map((project) => (
-                    // Proje Detay Linki (Link'e çevrildi)
                     <Link 
                         key={project.id} 
                         to={`/projects/${project.id}`}
@@ -124,10 +148,7 @@ function DashboardPage() {
     };
     // ----------------------------------------
 
-
-    // --- ANA JSX (Dashboard Layout'u) ---
     return (
-        // Modal'ı ve Dashboard içeriğini sarmalamak için React Fragment kullanıyoruz
         <>
             <NewProjectModal 
                 show={isModalOpen} 
@@ -137,7 +158,7 @@ function DashboardPage() {
 
             <div className="flex h-screen w-full flex-row bg-background-light dark:bg-background-dark">
                 
-                {/* --- SideNavBar (Değişiklik yok) --- */}
+                {/* --- SideNavBar (GÜNCELLENDİ) --- */}
                 <aside className="flex h-full w-64 flex-col bg-[#1A202C] p-4 text-gray-300">
                     <div className="flex flex-col gap-4">
                         <div className="flex items-center gap-3 px-3 py-2">
@@ -159,10 +180,7 @@ function DashboardPage() {
                                 <span className="material-symbols-outlined">checklist</span>
                                 <p className="text-sm font-medium leading-normal">Görevler</p>
                             </Link>
-                            <Link className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-white/10" to="/settings">
-                                <span className="material-symbols-outlined">settings</span>
-                                <p className="text-sm font-medium leading-normal">Ayarlar</p>
-                            </Link>
+                            {/* "Ayarlar" linki SİLİNDİ */}
                         </nav>
                     </div>
                 </aside>
@@ -170,17 +188,19 @@ function DashboardPage() {
                 {/* --- Ana İçerik --- */}
                 <main className="flex h-full flex-1 flex-col overflow-y-auto">
                     
-                    {/* --- TopNavBar (HATANIN OLDUĞU YER DÜZELTİLDİ) --- */}
+                    {/* --- TopNavBar (GÜNCELLENDİ) --- */}
                     <header className="flex items-center justify-end whitespace-nowrap border-b border-solid border-gray-200 dark:border-gray-700 px-10 py-3">
                         <div className="flex items-center gap-4">
                             
-                            {/* Avatar ve Kullanıcı Adı sarmalayıcısı */}
+                            {/* Avatar ve Kullanıcı Adı sarmalayıcısı (GÜNCELLENDİ) */}
                             <div className="flex items-center gap-3">
-                                <div 
-                                    className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" 
-                                    style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuCIKaMVIy_vHJrmeXzOgXNEwAjF_R8RhlC7X266Ixi69gQ6R3OGJFa98odvapm0SkDjpbztSGn03fsEBUyPPbm2GEwWda0KS94y_BxI-IMUwZmsbB1ABcz7nYt_abpf8Lsgy8imcm54lgWFptL5FtcfN0gU7Moo3oJ3_P4ADt1D3A5AetUcdaAwusWyKSxtbvnk_ldGVSiJcCBXt9hzW_USM3spsi8_c-LnOVL7aKxEz0DxXnanGK3PRoT0EMH0isCTXWT4Hl3vhk3R")'}}
-                                ></div> 
-                                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Kullanıcı Adı</span>
+                                <Link to="/profile" className="flex-shrink-0">
+                                    <div 
+                                        className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 hover:ring-2 hover:ring-primary hover:ring-offset-2 dark:hover:ring-offset-background-dark transition-all" 
+                                        style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuCIKaMVIy_vHJrmeXzOgXNEwAjF_R8RhlC7X266Ixi69gQ6R3OGJFa98odvapm0SkDjpbztSGn03fsEBUyPPbm2GEwWda0KS94y_BxI-IMUwZmsbB1ABcz7nYt_abpf8Lsgy8imcm54lgWFptL5FtcfN0gU7Moo3oJ3_P4ADt1D3A5AetUcdaAwusWyKSxtbvnk_ldGVSiJcCBXt9hzW_USM3spsi8_c-LnOVL7aKxEz0DxXnanGK3PRoT0EMH0isCTXWT4Hl3vhk3R")'}}
+                                    ></div> 
+                                </Link>
+                                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{userName}</span>
                             </div> 
 
                             {/* Çıkış Yap Butonu */}

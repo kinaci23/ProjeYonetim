@@ -13,6 +13,12 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     # 'role' sütunu kaldırıldı.
     
+    # --- YENİ EKLENEN PROFİL SÜTUNLARI ---
+    first_name = Column(String, nullable=True)
+    last_name = Column(String, nullable=True)
+    title = Column(String, nullable=True) # Örn: "Software Developer"
+    # -------------------------------------
+    
     # İlişkiler:
     
     # 1. Bu kullanıcının atandığı görevler (Bu değişmedi)

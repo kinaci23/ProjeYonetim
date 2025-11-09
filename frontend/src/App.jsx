@@ -6,8 +6,9 @@ import LoginPage from './pages/LoginPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx'; 
 import ProjectDetailPage from './pages/ProjectDetailPage.jsx'; 
-// YENİ IMPORT (ADIM 7)
 import ProjectSettingsPage from './pages/ProjectSettingsPage.jsx'; 
+// YENİ IMPORT (PROFİL SAYFASI)
+import ProfilePage from './pages/ProfilePage.jsx';
 
 function App() {
   return (
@@ -25,9 +26,11 @@ function App() {
         {/* Proje Detay (Trello Panosu) */}
         <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
 
-        {/* YENİ EKLENEN YOL (ADIM 7) */}
         {/* Proje Ayarları Sayfası */}
         <Route path="/projects/:projectId/settings" element={<ProjectSettingsPage />} />
+
+        {/* YENİ EKLENEN YOL (PROFİL SAYFASI) */}
+        <Route path="/profile" element={<ProfilePage />} />
 
       </Routes>
     </div>
