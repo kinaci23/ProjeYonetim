@@ -25,18 +25,23 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 // ------------------------------------------
 
-// --- YARDIMCI BİLEŞEN 1: Görev Kartı (TaskCard) ---
+// --- YARDIMCI BİLEŞEN 1: Görev Kartı (TaskCard) (DÜZELTİLDİ) ---
+// Sürükleme (listeners) ve Tıklama (onClick)
+// artık 'PointerSensor' sayesinde aynı element üzerinde yaşayabilir.
 function TaskCard({ task, onTaskClick }) {
     const {
         attributes,
-        listeners, 
+        listeners, // Sürükleme dinleyicileri
         setNodeRef,
         transform,
         transition,
         isDragging, 
     } = useSortable({ 
         id: task.id.toString(), 
-        data: { type: 'Task', task: task }
+        data: {
+            type: 'Task', // Bu bir Görev Kartı
+            task: task // Tüm görev verisini taşıyoruz
+        }
     }); 
 
     const style = {
@@ -47,37 +52,31 @@ function TaskCard({ task, onTaskClick }) {
     };
 
     return (
+        // DÜZELTME: Hem 'onClick' hem 'listeners' artık bu ana div üzerinde
         <div 
             ref={setNodeRef} 
             style={style} 
             {...attributes} 
-            className="block bg-white dark:bg-[#1A202C] rounded-lg p-4 shadow-md transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
+            {...listeners} // Sürüklemeyi başlatmak için (Tüm kart)
+            onClick={() => onTaskClick(task.id.toString())} // Detay modalını açmak için (Tüm kart)
+            className="block bg-white dark:bg-[#1A202C] rounded-lg p-4 shadow-md cursor-grab active:cursor-grabbing transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
         >
-            <div 
-                onClick={() => onTaskClick(task.id.toString())} 
-                className="cursor-pointer"
-            >
-                <h4 className="font-bold text-[#1A202C] dark:text-white">{task.title}</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{task.description || "Açıklama girilmemiş."}</p>
-                {task.due_date && (
-                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-3">
-                        Son Teslim: {new Date(task.due_date).toLocaleDateString('tr-TR')}
-                    </p>
-                )}
-                <p className="text-xs text-primary mt-1">Atanan: {task.assignee_id ? `Kullanıcı ID ${task.assignee_id}` : 'Yok'}</p>
-            </div>
-            
-            <div 
-                {...listeners} 
-                className="cursor-grab active:cursor-grabbing w-full h-4 -mb-2 mt-2" 
-            >
-            </div>
+            {/* İçerik (Artık ayrı bir tıklama div'ine gerek yok) */}
+            <h4 className="font-bold text-[#1A202C] dark:text-white">{task.title}</h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{task.description || "Açıklama girilmemiş."}</p>
+            {task.due_date && (
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-3">
+                    Son Teslim: {new Date(task.due_date).toLocaleDateString('tr-TR')}
+                </p>
+            )}
+            <p className="text-xs text-primary mt-1">Atanan: {task.assignee_id ? `Kullanıcı ID ${task.assignee_id}` : 'Yok'}</p>
         </div>
     );
 }
 // --------------------------------------------------
 
 // --- YARDIMCI BİLEŞEN 2: Kanban Sütunu ---
+// (Bu bileşende değişiklik yok, TaskCard'a 'onTaskClick'i iletiyor)
 function KanbanColumn({ id, title, tasks, onTaskClick }) {
     const { setNodeRef } = useDroppable({
         id: id, 
@@ -122,7 +121,15 @@ function ProjectDetailPage() {
     const [refreshTrigger, setRefreshTrigger] = useState(0); 
     const [selectedTaskId, setSelectedTaskId] = useState(null); 
     
-    const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+    // Sürükleme Sensörü (DÜZELTME: 'distance: 5' ayarı burada)
+    // Tıklama (0px) ile Sürüklemeyi (5px+) ayırır
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: { 
+                distance: 5,
+            },
+        })
+    );
 
     // --- Veri Çekme (useEffect 1: Proje Detayı) ---
     useEffect(() => {
@@ -179,45 +186,81 @@ function ProjectDetailPage() {
     const handleTaskClick = (taskId) => { setSelectedTaskId(taskId); };
     const handleDetailModalClose = () => { setSelectedTaskId(null); };
 
-    // --- Sürükleme Bittiğinde ---
+    // --- SÜRÜKLEME BİTTİĞİNDE ÇALIŞAN ANA FONKSİYON (DÜZELTİLDİ) ---
     const handleDragEnd = (event) => {
         const { active, over } = event;
-        if (!over) return; 
+
+        if (!over) {
+            console.log("Sürükleme hedefi (over) yok, iptal.");
+            return; 
+        }
+
+        // Sürüklenen kartın ID'si ve verisi
         const activeId = active.id.toString();
-        const activeTask = active.data.current?.task; 
-        if (!activeTask) return;
-        
-        let newStatus;
-        if (over.data.current?.type === 'Column') {
-            newStatus = over.id; 
-        } else if (over.data.current?.type === 'Task') {
-            newStatus = over.data.current.task.status;
-        } else {
-             const overContainerId = over.data.current?.sortable?.containerId;
-             if (["beklemede", "yapiliyor", "tamamlandı"].includes(overContainerId)) {
-                newStatus = overContainerId;
-             } else {
-                return; 
-             }
+        const activeTask = active.data.current?.task; // TaskCard'a eklediğimiz data
+
+        if (!activeTask) {
+            console.error("Sürüklenen görev (activeTask) verisi bulunamadı!");
+            return;
         }
         
-        if (activeTask.status === newStatus) return; 
+        // Bırakılan yerin ID'si
+        const overId = over.id.toString();
 
-        setTasks((prevTasks) => prevTasks.map(task => 
-            task.id === activeTask.id ? { ...task, status: newStatus } : task
-        ));
+        // Bırakılan yerin SÜTUN ID'sini (yani yeni status'u) bul
+        let newStatus;
+        
+        // Bırakılan yer (over) bir SÜTUN mu? (KanbanColumn'a eklediğimiz 'data' sayesinde)
+        if (over.data.current?.type === 'Column') {
+            newStatus = overId; // Evet, ID'sini al (örn: "yapiliyor")
+        } 
+        // Bırakılan yer (over) bir KART mı? (TaskCard'a eklediğimiz 'data' sayesinde)
+        else if (over.data.current?.type === 'Task') {
+            newStatus = over.data.current.task.status; // Evet, o kartın 'status'unu al
+        } 
+        else {
+             // 'useDroppable' kullandığımız için bu durum yaşanmamalı
+             console.log("Geçersiz bırakma hedefi (Sütun veya Kart değil).");
+             return; 
+        }
+        
+        // Durum değişmedi mi?
+        if (activeTask.status === newStatus) {
+            console.log("Durum değişmedi, işlem yok.");
+            return; 
+        }
 
+        // --- 1. Optimistic Update (Arayüzü Anında Güncelle) ---
+        // (Videodaki "geri kayma" hatasını bu çözer)
+        setTasks((prevTasks) => {
+            return prevTasks.map(task => 
+                task.id === activeTask.id 
+                    ? { ...task, status: newStatus } // Durumu anında değiştir
+                    : task
+            );
+        });
+
+        // --- 2. API Güncellemesi (Arka Planda) ---
         taskService.updateTaskStatus(activeTask.id, newStatus)
+            .then(() => {
+                console.log(`API: Görev ${activeTask.id} durumu ${newStatus} olarak güncellendi.`);
+            })
             .catch((err) => {
+                // Hata oluşursa! Arayüzü eski haline geri al (Rollback)
                 console.error("Görev durumu güncellenemedi:", err);
-                setTasks((prevTasks) => prevTasks.map(task => 
-                    task.id === activeTask.id ? { ...task, status: activeTask.status } : task
-                ));
+                setTasks((prevTasks) => {
+                    return prevTasks.map(task => 
+                        task.id === activeTask.id
+                            ? { ...task, status: activeTask.status } // Orijinal status'a geri dön
+                            : task
+                    );
+                });
                 setError("Görev durumu güncellenemedi. Sayfayı yenileyin.");
             });
     };
-    
-    // --- Kanban İçeriğini Gösterme ---
+    // --------------------------------------------------
+
+    // --- İçeriği Gösterme Fonksiyonu (KANBAN) ---
     const renderKanbanContent = () => {
         const isLoading = isLoadingProject || isLoadingTasks;
         if (isLoading) return <div className="flex flex-1 items-center justify-center py-10"><p className="text-xl font-medium dark:text-white">Proje Yükleniyor...</p></div>;
@@ -231,13 +274,19 @@ function ProjectDetailPage() {
         ];
         
         return (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <DndContext 
+                sensors={sensors}
+                collisionDetection={closestCenter} 
+                onDragEnd={handleDragEnd}
+            >
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {columns.map(column => (
+                        // Yeni KanbanColumn bileşenini kullanıyoruz
                         <KanbanColumn
                             key={column.status}
-                            id={column.status}
+                            id={column.status} // "beklemede", "yapiliyor" vb.
                             title={column.title}
+                            // O sütuna ait görevleri filtreleyip gönder
                             tasks={tasks.filter(t => t.status === column.status)}
                             onTaskClick={handleTaskClick} 
                         />
@@ -291,13 +340,12 @@ function ProjectDetailPage() {
                     {/* --- Sayfa İçeriği --- */}
                     <div className="flex flex-1 flex-col p-6 lg:p-10">
                         
-                        {/* Üst Başlık ve Butonlar (GÜNCELLENDİ) */}
+                        {/* Üst Başlık ve Butonlar (AYARLAR BUTONU SİLİNDİ) */}
                         <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
                             <h1 className="text-[#140d1b] dark:text-white text-4xl font-black leading-tight tracking-tight min-w-72">
                                 {project?.name || (isLoadingProject ? "Yükleniyor..." : "Proje Bulunamadı")}
                             </h1>
                             <div className="flex gap-3 flex-wrap justify-start">
-                                {/* Yeni Görev Ekle Butonu */}
                                 <button 
                                     className="flex items-center gap-2 min-w-[84px] max-w-[480px] cursor-pointer justify-center overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 disabled:opacity-50"
                                     disabled={isLoadingProject || isLoadingTasks || !project} 
@@ -306,8 +354,6 @@ function ProjectDetailPage() {
                                     <span className="material-symbols-outlined">add_circle</span>
                                     <span className="truncate">Yeni Görev Ekle</span>
                                 </button>
-                                
-                                {/* Üye Ekle Butonu */}
                                 <button 
                                     className="flex items-center gap-2 min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 border border-gray-300 dark:border-gray-700 bg-white dark:bg-zinc-800 text-gray-800 dark:text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50"
                                     disabled={isLoadingProject || isLoadingTasks || !project}
@@ -316,19 +362,7 @@ function ProjectDetailPage() {
                                     <span className="material-symbols-outlined">person_add</span>
                                     <span className="truncate">Üye Ekle</span>
                                 </button>
-
-                                {/* YENİ EKLENEN BUTON (ADIM 7) */}
-                                <Link 
-                                    to={`/projects/${projectId}/settings`} // Yeni ayar sayfasına yönlendir
-                                    className={`flex items-center gap-2 min-w-[40px] max-w-[480px] cursor-pointer justify-center overflow-hidden rounded-lg h-10 px-3 border border-gray-300 dark:border-gray-700 bg-white dark:bg-zinc-800 text-gray-800 dark:text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors ${
-                                        (isLoadingProject || !project) ? 'opacity-50 pointer-events-none' : '' // Yüklenirken butonu pasif yap
-                                    }`}
-                                    aria-disabled={isLoadingProject || !project}
-                                    tabIndex={(isLoadingProject || !project) ? -1 : undefined}
-                                >
-                                    <span className="material-symbols-outlined">settings</span>
-                                </Link>
-
+                                {/* Ayarlar Butonu (Geri Alma sırasında silindi) */}
                             </div>
                         </div>
                         
