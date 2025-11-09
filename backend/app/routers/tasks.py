@@ -94,7 +94,6 @@ def get_task_by_id(
     Tek bir görevin detaylarını ID ile getirir.
     Sadece o görevin ait olduğu projenin üyeleri erişebilir.
     """
-    # Güvenlik kontrolü ve görevi alma işlemi yardımcı fonksiyon tarafından yapılır
     db_task = get_task_and_verify_membership(task_id=task_id, db=db, current_user=current_user)
     return db_task
 
@@ -148,7 +147,7 @@ def delete_task(
     return None 
 
 # -----------------------------------------------------------------
-# MEVCUT ENDPOINT (Sürükle-Bırak) (Güvenlik Düzeltmesi)
+# MEVCUT ENDPOINT (Sürükle-Bırak) (GÜVENLİK GÜNCELLEMESİ)
 # -----------------------------------------------------------------
 @router.put("/tasks/{task_id}/status", response_model=task_schemas.TaskDisplay)
 def update_task_status(
@@ -161,6 +160,7 @@ def update_task_status(
     Bir görevin durumunu (status) günceller (Sürükle-Bırak).
     Sadece o görevin ait olduğu projenin üyeleri güncelleyebilir.
     """
+    # Güvenlik kontrolü ve görevi alma (Yardımcı fonksiyonu kullanıyoruz)
     db_task = get_task_and_verify_membership(task_id=task_id, db=db, current_user=current_user)
     
     db_task.status = status_update.status
