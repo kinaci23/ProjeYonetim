@@ -1,12 +1,13 @@
-// frontend/src/services/authService.js
-
 import axios from 'axios';
+// YENİ IMPORT: Token'ı okumak için
+import { jwtDecode } from 'jwt-decode'; 
 
-// Backend API'mizin temel adresi. 
 const API_URL = 'http://127.0.0.1:8000';
 
+/**
+ * GİRİŞ FONKSİYONU (GÜNCELLENDİ)
+ */
 const login = async (email, password) => {
-    // Login endpoint'i (OAuth2) bizden form verisi bekliyordu.
     const params = new URLSearchParams();
     params.append('username', email); 
     params.append('password', password);
@@ -15,52 +16,67 @@ const login = async (email, password) => {
         `${API_URL}/api/auth/login`, 
         params,
         {
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            }
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
         }
     );
 
     if (response.data.access_token) {
+        // 1. Token'ı kaydet (Mevcut kod)
         localStorage.setItem('userToken', response.data.access_token);
+        
+        // --- YENİ EKLENEN MANTIK ---
+        // 2. Token'ı çöz
+        try {
+            const decodedToken = jwtDecode(response.data.access_token);
+            // 3. Token'ın içindeki 'id'yi (user.id) de kaydet
+            // (Backend/auth.py'de 'id'yi eklemiştik)
+            if (decodedToken.id) {
+                localStorage.setItem('userId', decodedToken.id);
+            }
+        } catch (error) {
+            console.error("Token decode hatası:", error);
+        }
+        // -------------------------
     }
     return response.data;
 };
 
-// --- YENİ EKLENEN FONKSİYON ---
-const register = async (email, password) => {
-    // Register endpoint'i Pydantic modeli (UserCreate) kullandığı için
-    // bizden form verisi değil, JSON verisi bekler.
-    
-    // Not: Backend'deki Pydantic şemamız (UserCreate)
-    // 'role' alanı gönderilmezse otomatik olarak 'çalışan'
-    // varsayılan rolünü atayacaktır. Bu, güvenlik için istediğimiz bir şeydir.
-    const response = await axios.post(
-        `${API_URL}/api/auth/register`, 
-        {
-            email: email,
-            password: password
-            // rol göndermiyoruz, default 'çalışan' olacak
-        }
-    );
-    
-    // Dönen veriyi (oluşturulan kullanıcı) döndür
-    return response.data; 
-};
-// ---------------------------------
-
+/**
+ * ÇIKIŞ FONKSİYONU (GÜNCELLENDİ)
+ */
 const logout = () => {
     localStorage.removeItem('userToken');
+    localStorage.removeItem('userId'); // <-- 'userId'yi de temizle
 };
 
+/**
+ * Token'ı almak için (Değişmedi)
+ */
 const getCurrentToken = () => {
     return localStorage.getItem('userToken');
 };
 
-// Yeni 'register' fonksiyonunu da dışa aktarıyoruz
+// --- YENİ EKLENEN FONKSİYON (HATANIN ÇÖZÜMÜ) ---
+/**
+ * Mevcut giriş yapmış kullanıcının ID'sini alır.
+ */
+const getCurrentUserId = () => {
+    // ID'yi string olarak döndürür
+    return localStorage.getItem('userId'); 
+};
+// ----------------------------------------
+
 export default {
     login,
-    register, // <-- YENİ
     logout,
     getCurrentToken,
+    getCurrentUserId, // <-- Yeni fonksiyonu dışa aktar
+    // (Register fonksiyonuna gerek yok, login'de ID alıyoruz)
+    register: async (email, password) => {
+        const response = await axios.post(
+            `${API_URL}/api/auth/register`, 
+            { email: email, password: password }
+        );
+        return response.data; 
+    }
 };

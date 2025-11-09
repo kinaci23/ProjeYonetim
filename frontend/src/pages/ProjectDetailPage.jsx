@@ -76,25 +76,41 @@ function TaskCard({ task, onTaskClick }) {
 // --------------------------------------------------
 
 // --- YARDIMCI BİLEŞEN 2: Kanban Sütunu ---
-// (Bu bileşende değişiklik yok, TaskCard'a 'onTaskClick'i iletiyor)
+// 'onTaskClick' prop'unu TaskCard'a aktaracak
 function KanbanColumn({ id, title, tasks, onTaskClick }) {
+    // Sütunu "Bırakılabilir Alan" (Droppable) olarak tanımla
     const { setNodeRef } = useDroppable({
-        id: id, 
-        data: { type: 'Column' }
+        id: id, // ID: "beklemede", "yapiliyor" vb.
+        data: {
+            type: 'Column', // Bu bir Sütun
+        }
     });
+
+    // Görev kartlarının ID'lerini (string olarak) al
     const taskIds = tasks.map(t => t.id.toString());
+
     return (
-        <SortableContext items={taskIds} strategy={verticalListSortingStrategy} id={id} >
-            <div ref={setNodeRef} className="flex flex-col bg-gray-100/50 dark:bg-[#141824] rounded-xl p-4 min-h-[500px]">
+        // Sütunu "Sıralanabilir Alan" (Sortable) olarak tanımla
+        <SortableContext 
+            items={taskIds}
+            strategy={verticalListSortingStrategy}
+            id={id} 
+        >
+            {/* Bırakılabilir alanın referansını (ref) bu div'e bağla */}
+            <div 
+                ref={setNodeRef} 
+                className="flex flex-col bg-gray-100/50 dark:bg-[#141824] rounded-xl p-4 min-h-[500px]"
+            >
                 <h3 className={`text-[#1A202C] dark:text-white text-lg font-bold leading-tight px-2 pb-4 pt-0 border-b border-gray-300 dark:border-gray-700/50`}>
                     {title} ({tasks.length})
                 </h3>
+                
                 <div className="flex flex-col gap-4 overflow-y-auto pt-4 flex-1">
                     {tasks.map(task => (
                         <TaskCard 
                             key={task.id} 
                             task={task} 
-                            onTaskClick={onTaskClick} 
+                            onTaskClick={onTaskClick} // Tıklamayı TaskCard'a ilet
                         />
                     ))}
                     {tasks.length === 0 && (<p className="text-sm text-gray-500 dark:text-gray-600 text-center py-4">Bu sütunda görev yok.</p>)}
@@ -340,12 +356,13 @@ function ProjectDetailPage() {
                     {/* --- Sayfa İçeriği --- */}
                     <div className="flex flex-1 flex-col p-6 lg:p-10">
                         
-                        {/* Üst Başlık ve Butonlar (AYARLAR BUTONU SİLİNDİ) */}
+                        {/* Üst Başlık ve Butonlar (GÜNCELLENDİ) */}
                         <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
                             <h1 className="text-[#140d1b] dark:text-white text-4xl font-black leading-tight tracking-tight min-w-72">
                                 {project?.name || (isLoadingProject ? "Yükleniyor..." : "Proje Bulunamadı")}
                             </h1>
                             <div className="flex gap-3 flex-wrap justify-start">
+                                {/* Yeni Görev Ekle Butonu */}
                                 <button 
                                     className="flex items-center gap-2 min-w-[84px] max-w-[480px] cursor-pointer justify-center overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 disabled:opacity-50"
                                     disabled={isLoadingProject || isLoadingTasks || !project} 
@@ -354,6 +371,8 @@ function ProjectDetailPage() {
                                     <span className="material-symbols-outlined">add_circle</span>
                                     <span className="truncate">Yeni Görev Ekle</span>
                                 </button>
+                                
+                                {/* Üye Ekle Butonu */}
                                 <button 
                                     className="flex items-center gap-2 min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 border border-gray-300 dark:border-gray-700 bg-white dark:bg-zinc-800 text-gray-800 dark:text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50"
                                     disabled={isLoadingProject || isLoadingTasks || !project}
@@ -362,7 +381,22 @@ function ProjectDetailPage() {
                                     <span className="material-symbols-outlined">person_add</span>
                                     <span className="truncate">Üye Ekle</span>
                                 </button>
-                                {/* Ayarlar Butonu (Geri Alma sırasında silindi) */}
+
+                                {/* YENİ EKLENEN BUTON (ADIM 7) */}
+                                {/* Bu, "Adım 7"yi geri alırken silmemiz gereken koddu,
+                                   ama "Ana Kopya"nda (dün 16:58'de attığın) bu zaten vardı.
+                                   Bu yüzden, çalışan stabil kod bu olmalı. */}
+                                <Link 
+                                    to={`/projects/${projectId}/settings`} // Ayar sayfasına yönlendir
+                                    className={`flex items-center gap-2 min-w-[40px] max-w-[480px] cursor-pointer justify-center overflow-hidden rounded-lg h-10 px-3 border border-gray-300 dark:border-gray-700 bg-white dark:bg-zinc-800 text-gray-800 dark:text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors ${
+                                        (isLoadingProject || !project) ? 'opacity-50 pointer-events-none' : '' 
+                                    }`}
+                                    aria-disabled={isLoadingProject || !project}
+                                    tabIndex={(isLoadingProject || !project) ? -1 : undefined}
+                                >
+                                    <span className="material-symbols-outlined">settings</span>
+                                </Link>
+
                             </div>
                         </div>
                         
