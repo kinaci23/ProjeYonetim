@@ -352,7 +352,11 @@ function ProjectDetailPage() {
                                 <span className="material-symbols-outlined">checklist</span>
                                 <p className="text-sm font-medium leading-normal">Görevler</p>
                             </Link>
-                            {/* "Ayarlar" linki SİLİNDİ */}
+                            {/* YENİ "NOTLAR" LİNKİ EKLENDİ */}
+                            <Link className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-white/10" to="/notes">
+                                <span className="material-symbols-outlined">description</span>
+                                <p className="text-sm font-medium leading-normal">Notlar</p>
+                            </Link>
                         </nav>
                     </div>
                 </aside>
@@ -368,7 +372,7 @@ function ProjectDetailPage() {
                                 <Link to="/profile" className="flex-shrink-0">
                                     <div 
                                         className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 hover:ring-2 hover:ring-primary hover:ring-offset-2 dark:hover:ring-offset-background-dark transition-all" 
-                                        style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuCIKaMVIy_vHJrmeXzOgXNEwAjF_R8RhlC7X266Ixi69gQ6R3OGJFa98odvapm0SkDjpbztSGn03fsEBUyPPbm2GEwWda0KS94y_BxI-IMUwZmsbB1ABcz7nYt_abpf8Lsgy8imcm54lgWFptL5FtcfN0gU7Moo3oJ3_P4ADt1D3A5AetUcdaAwusWyKSxtbvnk_ldGVSiJcCBXt9hzW_USM3spsi8_c-LnOVL7aKxEz0DxXnanGK3PRoT0EMH0isCTXWT4Hl3vhk3R")'}}
+                                        style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida/public/AB6AXuCIKaMVIy_vHJrmeXzOgXNEwAjF_R8RhlC7X266Ixi69gQ6R3OGJFa98odvapm0SkDjpbztSGn03fsEBUyPPbm2GEwWda0KS94y_BxI-IMUwZmsbB1ABcz7nYt_abpf8Lsgy8imcm54lgWFptL5FtcfN0gU7Moo3oJ3_P4ADt1D3A5AetUcdaAwusWyKSxtbvnk_ldGVSiJcCBXt9hzW_USM3spsi8_c-LnOVL7aKxEz0DxXnanGK3PRoT0EMH0isCTXWT4Hl3vhk3R")'}}
                                     ></div> 
                                 </Link>
                                 <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{userName}</span>

@@ -180,7 +180,11 @@ function DashboardPage() {
                                 <span className="material-symbols-outlined">checklist</span>
                                 <p className="text-sm font-medium leading-normal">Görevler</p>
                             </Link>
-                            {/* "Ayarlar" linki SİLİNDİ */}
+                            {/* YENİ "NOTLAR" LİNKİ EKLENDİ */}
+                            <Link className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-white/10" to="/notes">
+                                <span className="material-symbols-outlined">description</span>
+                                <p className="text-sm font-medium leading-normal">Notlar</p>
+                            </Link>
                         </nav>
                     </div>
                 </aside>

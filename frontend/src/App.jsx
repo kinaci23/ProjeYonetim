@@ -7,8 +7,9 @@ import DashboardPage from './pages/DashboardPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx'; 
 import ProjectDetailPage from './pages/ProjectDetailPage.jsx'; 
 import ProjectSettingsPage from './pages/ProjectSettingsPage.jsx'; 
-// YENİ IMPORT (PROFİL SAYFASI)
 import ProfilePage from './pages/ProfilePage.jsx';
+// YENİ IMPORT (NOTLAR SAYFASI)
+import NotesPage from './pages/NotesPage.jsx';
 
 function App() {
   return (
@@ -29,8 +30,11 @@ function App() {
         {/* Proje Ayarları Sayfası */}
         <Route path="/projects/:projectId/settings" element={<ProjectSettingsPage />} />
 
-        {/* YENİ EKLENEN YOL (PROFİL SAYFASI) */}
+        {/* Profil Sayfası */}
         <Route path="/profile" element={<ProfilePage />} />
+
+        {/* YENİ EKLENEN YOL (NOTLAR SAYFASI) */}
+        <Route path="/notes" element={<NotesPage />} />
 
       </Routes>
     </div>
