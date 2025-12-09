@@ -5,7 +5,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Router'larımızı (endpoint gruplarımızı) import ediyoruz
-from app.routers import auth, projects, tasks, users, notes # YENİ: notes import edildi
+# YENİ: 'analysis' buraya eklendi
+from app.routers import auth, projects, tasks, users, notes, analysis 
 
 app = FastAPI(title="Proje Yönetim Sistemi API")
 
@@ -33,7 +34,8 @@ app.include_router(auth.router)     # /api/auth/... endpoint'leri
 app.include_router(projects.router) # /api/projects/... endpoint'leri
 app.include_router(tasks.router)    # /api/tasks/... endpoint'leri
 app.include_router(users.router)    # /api/users/... endpoint'leri
-app.include_router(notes.router)    # YENİ: /api/notes/... endpoint'leri
+app.include_router(notes.router)    # /api/notes/... endpoint'leri
+app.include_router(analysis.router) # YENİ: /api/projects/{id}/analyze endpoint'i
 
 # Ana karşılama endpoint'i
 @app.get("/")
