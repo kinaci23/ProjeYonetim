@@ -1,15 +1,16 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-// Çalışan import yöntemimiz:
-// HATA DÜZELTMESİ: Dosya uzantılarını (.jsx) açıkça ekliyoruz
+
 import LoginPage from './pages/LoginPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx'; 
 import ProjectDetailPage from './pages/ProjectDetailPage.jsx'; 
 import ProjectSettingsPage from './pages/ProjectSettingsPage.jsx'; 
 import ProfilePage from './pages/ProfilePage.jsx';
-// YENİ IMPORT (NOTLAR SAYFASI)
 import NotesPage from './pages/NotesPage.jsx';
+
+// --- EKSİK OLAN IMPORT BURADA ---
+import ProjectAnalysisPage from './pages/ProjectAnalysisPage.jsx'; 
 
 function App() {
   return (
@@ -24,17 +25,20 @@ function App() {
         {/* Ana Dashboard */}
         <Route path="/dashboard" element={<DashboardPage />} />
         
-        {/* Proje Detay (Trello Panosu) */}
+        {/* Proje Detay */}
         <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
 
-        {/* Proje Ayarları Sayfası */}
+        {/* Proje Ayarları */}
         <Route path="/projects/:projectId/settings" element={<ProjectSettingsPage />} />
 
         {/* Profil Sayfası */}
         <Route path="/profile" element={<ProfilePage />} />
 
-        {/* YENİ EKLENEN YOL (NOTLAR SAYFASI) */}
+        {/* Notlar Sayfası */}
         <Route path="/notes" element={<NotesPage />} />
+
+        {/* --- EKSİK OLAN ROTA BURADA --- */}
+        <Route path="/projects/:projectId/analysis" element={<ProjectAnalysisPage />} />
 
       </Routes>
     </div>

@@ -390,6 +390,15 @@ function ProjectDetailPage() {
                                 {project?.name || (isLoadingProject ? "Yükleniyor..." : "Proje Bulunamadı")}
                             </h1>
                             <div className="flex gap-3 flex-wrap justify-start">
+                                {/* New "Proje Analizi ve Raporlar" Button */}
+                                <Link 
+                                    to={`/projects/${projectId}/analysis`}
+                                    className="flex items-center gap-2 min-w-[40px] cursor-pointer justify-center overflow-hidden rounded-lg h-10 px-3 border border-gray-300 dark:border-gray-700 bg-white dark:bg-zinc-800 text-gray-800 dark:text-white text-sm font-bold hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
+                                    title="Proje Analizi ve Raporlar"
+                                >
+                                    <span className="material-symbols-outlined text-indigo-600 dark:text-indigo-400">analytics</span>
+                                </Link>
+                                {/* Existing Buttons */}
                                 <button 
                                     className="flex items-center gap-2 min-w-[84px] max-w-[480px] cursor-pointer justify-center overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 disabled:opacity-50"
                                     disabled={isLoadingProject || isLoadingTasks || !project} 

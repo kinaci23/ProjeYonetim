@@ -73,46 +73,53 @@ const deleteProject = async (projectId) => {
     return response.data; 
 };
 
-// --- YENİ EKLENEN FONKSİYON 3 (ADIM 7.2) ---
 /**
  * Bir üyenin projedeki rolünü günceller (admin/member).
- * @param {string|number} projectId - Proje ID'si
- * @param {string|number} memberId - Üyeliğin ID'si (user_id DEĞİL, project_members tablosunun ID'si)
- * @param {string} newRole - "admin" veya "member"
  */
 const updateMemberRole = async (projectId, memberId, newRole) => {
     const token = authService.getCurrentToken();
     if (!token) throw new Error("Kullanıcı giriş yapmamış.");
 
     const response = await axios.put(
-        `${API_URL}/api/projects/${projectId}/members/${memberId}`, // PUT .../members/{member_id}
-        { role: newRole }, // Body'de sadece { "role": "admin" }
+        `${API_URL}/api/projects/${projectId}/members/${memberId}`, 
+        { role: newRole }, 
         {
             headers: { 'Authorization': `Bearer ${token}` }
         }
     );
-    return response.data; // Güncellenmiş üyeliği döndürür
+    return response.data; 
 };
 
-// --- YENİ EKLENEN FONKSİYON 4 (ADIM 7.2) ---
 /**
  * Bir üyeyi projeden kaldırır.
- * @param {string|number} projectId - Proje ID'si
- * @param {string|number} memberId - Üyeliğin ID'si (project_members tablosunun ID'si)
  */
 const removeMember = async (projectId, memberId) => {
     const token = authService.getCurrentToken();
     if (!token) throw new Error("Kullanıcı giriş yapmamış.");
 
     const response = await axios.delete(
-        `${API_URL}/api/projects/${projectId}/members/${memberId}`, // DELETE .../members/{member_id}
+        `${API_URL}/api/projects/${projectId}/members/${memberId}`, 
         {
             headers: { 'Authorization': `Bearer ${token}` }
         }
     );
-    return response.data; // 204 No Content için boş dönecek
+    return response.data; 
 };
-// ----------------------------------------
+
+// --- YENİ EKLENEN FONKSİYON (AI Analizi İçin) ---
+const analyzeProject = async (projectId) => {
+    const token = authService.getCurrentToken();
+    if (!token) throw new Error("Kullanıcı giriş yapmamış.");
+
+    const response = await axios.post(
+        `${API_URL}/api/projects/${projectId}/analyze`,
+        {}, // Body boş gidebilir, parametreler URL'de
+        {
+            headers: { 'Authorization': `Bearer ${token}` }
+        }
+    );
+    return response.data; // { project_id: 1, analysis: { summary: "...", recommendations: [...] } }
+};
 
 export default {
     getProjects,
@@ -121,6 +128,7 @@ export default {
     addMemberToProject,
     updateProject, 
     deleteProject,
-    updateMemberRole, // <-- Yeni eklendi
-    removeMember      // <-- Yeni eklendi
+    updateMemberRole,
+    removeMember,
+    analyzeProject, // <-- Yeni eklenen fonksiyon dışa aktarıldı
 };
