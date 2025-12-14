@@ -6,8 +6,9 @@ from app.database import get_db
 from app.models.user_model import User
 from app.schemas.analysis_schemas import AnalysisResponse
 
-# Güvenlik (Sadece o projenin Admin'i analiz isteyebilir)
-from app.services.auth_service import get_project_admin
+# --- DEĞİŞİKLİK 1: get_project_admin yerine get_project_membership import et ---
+# Eski: from app.services.auth_service import get_project_admin
+from app.services.auth_service import get_project_membership 
 
 # Oluşturduğumuz AI Servisi
 from app.services.ai_service import ai_service
@@ -26,16 +27,16 @@ router = APIRouter(
 def analyze_project_endpoint(
     project_id: int,
     db: Session = Depends(get_db),
-    # KRİTİK GÜVENLİK: Bu satır, isteği yapan kişinin
-    # o projede "Admin" olup olmadığını kontrol eder. Değilse 403 hatası fırlatır.
-    current_user: User = Depends(get_project_admin)
+    # --- DEĞİŞİKLİK 2: Admin zorunluluğunu kaldır, Üye olmak yetsin ---
+    # Eski: current_user: User = Depends(get_project_admin)
+    membership = Depends(get_project_membership) 
 ):
     """
     Belirtilen projenin verilerini (görevler, üyeler, durumlar) toplar,
     Gemini AI servisine gönderir ve yapılandırılmış bir analiz raporu döndürür.
     """
     try:
-        # Servisimizi çağırıyoruz (Senkron olduğu için await kullanmıyoruz)
+        # Servisimizi çağırıyoruz
         analysis_result = ai_service.analyze_project(db, project_id)
         
         # Sonucu API formatına uygun döndür
@@ -45,12 +46,10 @@ def analyze_project_endpoint(
         )
 
     except ValueError as e:
-        # Veri bulunamadı hatası (örn: Proje yok)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
-        # Genel sunucu veya AI hatası
         print(f"Analiz Endpoint Hatası: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Analiz oluşturulurken bir hata meydana geldi."
+            detail=f"Analiz hatası: {str(e)}"
         )

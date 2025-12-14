@@ -1,68 +1,78 @@
 import os
 import json
+from datetime import datetime # Tarih hesabı için gerekli
 from sqlalchemy.orm import Session
 from google import genai
 from google.genai import types
+from pydantic import BaseModel, Field
 
 # Modellerimiz
 from app.models.project_model import Project
 from app.models.task_model import Task
 from app.models.project_member_model import ProjectMember
 from app.models.user_model import User
-# Şemamız (AI'ın bu formatta yanıt vermesini isteyeceğiz)
 from app.schemas.analysis_schemas import ProjectAnalysis
 
 class AIService:
     def __init__(self):
-        # API anahtarını kontrol et
         self.api_key = os.getenv("GEMINI_API_KEY")
         if not self.api_key:
-            raise ValueError("GEMINI_API_KEY ortam değişkeni bulunamadı. Lütfen .env dosyanızı kontrol edin.")
+            raise ValueError("GEMINI_API_KEY ortam değişkeni bulunamadı.")
         
-        # Gemini istemcisini başlat
         self.client = genai.Client(api_key=self.api_key)
-        # Hızlı ve ekonomik model
-        self.model_name = "gemini-2.0-flash" 
+        self.model_name = "gemini-2.5-flash" 
 
     def _prepare_project_data(self, db: Session, project_id: int) -> str:
         """
-        Veritabanından proje, görev ve üye verilerini çeker
-        ve LLM'e gönderilecek bir JSON metni hazırlar.
+        Veriyi hazırlarken GECİKME durumunu Python tarafında hesaplayıp
+        AI'a net bilgi (True/False) olarak gönderiyoruz.
         """
-        # 1. Proje Bilgisi
+        # 1. Proje
         project = db.query(Project).filter(Project.id == project_id).first()
         if not project:
             raise ValueError(f"Proje ID {project_id} bulunamadı.")
 
-        # 2. Üyeler ve İsimleri
+        # 2. Üyeler
         members = db.query(ProjectMember).filter(ProjectMember.project_id == project_id).all()
         member_list = []
-        user_map = {} # ID -> İsim eşleşmesi için
+        user_map = {} 
         
         for m in members:
             user = db.query(User).filter(User.id == m.user_id).first()
             if user:
                 full_name = f"{user.first_name} {user.last_name}" if user.first_name else user.email
+                # Rolü de ekliyoruz ki kim yönetici bilsin
                 member_list.append(f"{full_name} ({m.role})")
                 user_map[user.id] = full_name
 
-        # 3. Görevler
+        # 3. Görevler ve Gecikme Hesabı
         tasks = db.query(Task).filter(Task.project_id == project_id).all()
         task_list = []
+        
+        now = datetime.now() # Şu anki zaman
+
         for t in tasks:
             assignee = user_map.get(t.assignee_id, "Atanmamış")
+            
+            # Gecikme Mantığı: Status tamamlanmadıysa VE due_date geçmişse
+            is_overdue = False
+            if t.due_date and t.status != "tamamlandı" and t.due_date < now:
+                is_overdue = True
+
             task_list.append({
                 "baslik": t.title,
-                "durum": t.status, # beklemede, yapılıyor, tamamlandı
+                "durum": t.status, 
                 "atanan_kisi": assignee,
                 "aciklama": t.description or "Yok",
-                "son_tarih": str(t.due_date) if t.due_date else "Yok"
+                "son_tarih": str(t.due_date) if t.due_date else "Yok",
+                "GECIKMIS_MI": "EVET" if is_overdue else "HAYIR" # AI için büyük harfle işaret
             })
 
-        # 4. Veriyi JSON formatına çevir
+        # 4. JSON
         data_summary = {
             "proje_adi": project.name,
             "aciklama": project.description,
+            "bugunun_tarihi": str(now.strftime("%Y-%m-%d")), # AI'a bugünü de söylüyoruz
             "uyeler": member_list,
             "gorevler": task_list
         }
@@ -70,43 +80,41 @@ class AIService:
         return json.dumps(data_summary, ensure_ascii=False, indent=2)
 
     def analyze_project(self, db: Session, project_id: int) -> ProjectAnalysis:
-        """
-        Gemini API'ye proje verilerini gönderir ve yapılandırılmış analiz alır.
-        """
-        # Veriyi hazırla
         project_data_json = self._prepare_project_data(db, project_id)
         
+        # --- Prompt Güncellendi: Üye Analizi ve Gecikme Vurgusu ---
         prompt = f"""
-        Aşağıdaki proje verilerini analiz et. Bir proje yöneticisi gibi davran.
+        Sen profesyonel bir Proje Yöneticisisin. Aşağıdaki JSON verilerini analiz et.
         
         VERİLER:
         {project_data_json}
         
         GÖREVİN:
-        1. Projenin genel durumu hakkında kısa ve net bir özet çıkar. Riskleri veya gecikmeleri belirt.
-        2. Proje yöneticisine (Admin) yardımcı olacak 3 ile 5 arası somut, uygulanabilir öneri sun.
+        1. Projenin durumunu özetle (Summary). 
+           - Özellikle "GECIKMIS_MI": "EVET" olan görevleri tespit et ve bunları raporda mutlaka belirt.
+           - Ekip üyelerinin iş yükünü analiz et. Kimin üzerinde kaç görev var? Dengesizlik var mı? (Örn: "Ahmet'in üzerinde çok iş varken Mehmet boşta.")
+           - "Atanmamış" görevler varsa risk olarak belirt.
+
+        2. Yöneticiye 3-5 adet somut aksiyon önerisi ver (Recommendations).
+           - Gecikmiş görevler için ne yapılmalı?
+           - İş yükü dağılımı için ne yapılmalı?
         
-        Yanıtı Türkçe olarak ve belirtilen JSON şemasına uygun ver.
+        DİL: Türkçe
         """
 
         try:
-            # Gemini'ye istek at (Structured Output kullanarak)
             response = self.client.models.generate_content(
                 model=self.model_name,
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
-                    response_schema=ProjectAnalysis # Pydantic modelini doğrudan veriyoruz!
+                    response_schema=ProjectAnalysis 
                 )
             )
-            
-            # Gelen JSON yanıtını Pydantic modeline çevir
             return response.parsed
 
         except Exception as e:
             print(f"AI Analiz Hatası: {e}")
-            # Hata durumunda boş/hata mesajı dönmek yerine hatayı fırlatıp router'da yakalayacağız
             raise e
 
-# Servis örneğini oluştur (Dependency Injection için kullanılacak)
 ai_service = AIService()

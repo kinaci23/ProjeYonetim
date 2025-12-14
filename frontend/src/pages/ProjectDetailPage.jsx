@@ -1,125 +1,54 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom'; 
-// Çalışan import yöntemimiz: göreceli yol ve uzantı YOK
-import authService from '../services/authService';
-import projectService from '../services/projectService'; 
-import taskService from '../services/taskService'; 
-import userService from '../services/userService'; // YENİ EKLENDİ
-import NewTaskModal from '../components/NewTaskModal';
-import NewMemberModal from '../components/NewMemberModal'; 
-import TaskDetailModal from '../components/TaskDetailModal';
+import MainLayout from '@/components/MainLayout';
+import projectService from '@/services/projectService'; 
+import taskService from '@/services/taskService'; 
+import NewTaskModal from '@/components/NewTaskModal';
+import NewMemberModal from '@/components/NewMemberModal'; 
+import TaskDetailModal from '@/components/TaskDetailModal';
 
-// --- DND-KIT (SÜRÜKLE-BIRAK) IMPORTLARI ---
-import {
-    DndContext, 
-    closestCenter, 
-    PointerSensor,
-    useSensor,
-    useSensors,
-    useDroppable, // Sütunlar için
-} from '@dnd-kit/core';
-import {
-    SortableContext,
-    useSortable,
-    verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
+// DND-KIT Importları
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, useDroppable } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-// ------------------------------------------
 
-// --- YARDIMCI BİLEŞEN 1: Görev Kartı (TaskCard) ---
+// --- YARDIMCI BİLEŞENLER (TaskCard, KanbanColumn) ---
+// (Bu kısımlar değişmediği için kod kalabalığı yapmasın diye kısalttım, 
+// ama sen dosyadaki TaskCard ve KanbanColumn fonksiyonlarını KORU veya tekrar ekle)
 function TaskCard({ task, onTaskClick }) {
-    const {
-        attributes,
-        listeners, // Sürükleme dinleyicileri
-        setNodeRef,
-        transform,
-        transition,
-        isDragging, 
-    } = useSortable({ 
-        id: task.id.toString(), 
-        data: {
-            type: 'Task',
-            task: task 
-        }
-    }); 
-
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.7 : 1, 
-        zIndex: isDragging ? 100 : 1, 
-    };
-
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id.toString(), data: { type: 'Task', task: task } }); 
+    const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.7 : 1, zIndex: isDragging ? 100 : 1 };
     return (
-        <div 
-            ref={setNodeRef} 
-            style={style} 
-            {...attributes} 
-            {...listeners} 
-            onClick={() => onTaskClick(task.id.toString())} 
-            className="block bg-white dark:bg-[#1A202C] rounded-lg p-4 shadow-md cursor-grab active:cursor-grabbing transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
-        >
+        <div ref={setNodeRef} style={style} {...attributes} {...listeners} onClick={() => onTaskClick(task.id.toString())} className="block bg-white dark:bg-[#1A202C] rounded-lg p-4 shadow-md cursor-grab active:cursor-grabbing transition-all duration-200 hover:shadow-lg hover:scale-[1.02]">
             <h4 className="font-bold text-[#1A202C] dark:text-white">{task.title}</h4>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{task.description || "Açıklama girilmemiş."}</p>
-            {task.due_date && (
-                <p className="text-xs text-gray-500 dark:text-gray-500 mt-3">
-                    Son Teslim: {new Date(task.due_date).toLocaleDateString('tr-TR')}
-                </p>
-            )}
+            {task.due_date && <p className="text-xs text-gray-500 dark:text-gray-500 mt-3">Son Teslim: {new Date(task.due_date).toLocaleDateString('tr-TR')}</p>}
             <p className="text-xs text-primary mt-1">Atanan: {task.assignee_id ? `Kullanıcı ID ${task.assignee_id}` : 'Yok'}</p>
         </div>
     );
 }
-// --------------------------------------------------
 
-// --- YARDIMCI BİLEŞEN 2: Kanban Sütunu ---
 function KanbanColumn({ id, title, tasks, onTaskClick }) {
-    const { setNodeRef } = useDroppable({
-        id: id,
-        data: {
-            type: 'Column',
-        }
-    });
-
+    const { setNodeRef } = useDroppable({ id: id, data: { type: 'Column' } });
     const taskIds = tasks.map(t => t.id.toString());
-
     return (
-        <SortableContext 
-            items={taskIds}
-            strategy={verticalListSortingStrategy}
-            id={id} 
-        >
-            <div 
-                ref={setNodeRef} 
-                className="flex flex-col bg-gray-100/50 dark:bg-[#141824] rounded-xl p-4 min-h-[500px]"
-            >
-                <h3 className={`text-[#1A202C] dark:text-white text-lg font-bold leading-tight px-2 pb-4 pt-0 border-b border-gray-300 dark:border-gray-700/50`}>
-                    {title} ({tasks.length})
-                </h3>
-                
+        <SortableContext items={taskIds} strategy={verticalListSortingStrategy} id={id}>
+            <div ref={setNodeRef} className="flex flex-col bg-gray-100/50 dark:bg-[#141824] rounded-xl p-4 min-h-[500px]">
+                <h3 className={`text-[#1A202C] dark:text-white text-lg font-bold leading-tight px-2 pb-4 pt-0 border-b border-gray-300 dark:border-gray-700/50`}>{title} ({tasks.length})</h3>
                 <div className="flex flex-col gap-4 overflow-y-auto pt-4 flex-1">
-                    {tasks.map(task => (
-                        <TaskCard 
-                            key={task.id} 
-                            task={task} 
-                            onTaskClick={onTaskClick} 
-                        />
-                    ))}
+                    {tasks.map(task => <TaskCard key={task.id} task={task} onTaskClick={onTaskClick} />)}
                     {tasks.length === 0 && (<p className="text-sm text-gray-500 dark:text-gray-600 text-center py-4">Bu sütunda görev yok.</p>)}
                 </div>
             </div>
         </SortableContext>
     );
 }
-// --------------------------------------------------
-
 
 function ProjectDetailPage() {
     const navigate = useNavigate();
     const { projectId } = useParams(); 
     
     // --- State'ler ---
-    const [userName, setUserName] = useState('Kullanıcı Adı'); // YENİ EKLENDİ
     const [project, setProject] = useState(null); 
     const [tasks, setTasks] = useState([]);     
     const [error, setError] = useState(null); 
@@ -130,38 +59,8 @@ function ProjectDetailPage() {
     const [refreshTrigger, setRefreshTrigger] = useState(0); 
     const [selectedTaskId, setSelectedTaskId] = useState(null); 
     
-    const sensors = useSensors(
-        useSensor(PointerSensor, {
-            activationConstraint: { 
-                distance: 5,
-            },
-        })
-    );
+    const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
-    // YENİ useEffect (Kullanıcı Adını Çekmek İçin)
-    useEffect(() => {
-        const fetchUserName = async () => {
-            try {
-                const userData = await userService.getProfile();
-                if (userData.first_name && userData.last_name) {
-                    setUserName(`${userData.first_name} ${userData.last_name}`);
-                } else if (userData.first_name) {
-                    setUserName(userData.first_name);
-                } else {
-                    setUserName(userData.email);
-                }
-            } catch (err) {
-                console.error("Kullanıcı adı çekilemedi:", err);
-                if (err.response && err.response.status === 401) {
-                    authService.logout();
-                    navigate('/login');
-                }
-            }
-        };
-        fetchUserName();
-    }, [navigate]);
-
-    // --- Veri Çekme (useEffect 1: Proje Detayı) ---
     useEffect(() => {
         if (!projectId) return; 
         const fetchProjectDetails = async () => {
@@ -171,14 +70,9 @@ function ProjectDetailPage() {
                 const projectData = await projectService.getProjectById(projectId);
                 setProject(projectData);
             } catch (err) {
-                 console.error("Proje Detay çekme hatası:", err);
-                 if ((err.response && err.response.status === 401) || !err.response) {
-                    authService.logout(); navigate('/login');   
-                 } else if (err.response && err.response.status === 403) {
-                    setError("Bu projeyi görüntüleme yetkiniz yok.");
-                 } else {
-                    setError("Proje yüklenirken bir hata oluştu.");
-                 }
+                 console.error("Proje Detay hatası:", err);
+                 if (err.response && err.response.status === 403) setError("Bu projeyi görüntüleme yetkiniz yok.");
+                 else setError("Proje yüklenirken bir hata oluştu.");
             } finally {
                 setIsLoadingProject(false); 
             }
@@ -186,7 +80,6 @@ function ProjectDetailPage() {
         fetchProjectDetails(); 
     }, [projectId, navigate, refreshTrigger]); 
     
-    // --- Veri Çekme (useEffect 2: Görevler) ---
     useEffect(() => {
         if (!projectId) return; 
         const fetchTasks = async () => {
@@ -195,13 +88,7 @@ function ProjectDetailPage() {
                 const tasksData = await taskService.getTasksForProject(projectId);
                 setTasks(tasksData);
             } catch (err) {
-                 console.error("Görevleri çekme hatası:", err);
-                 if ((err.response && err.response.status === 401) || !err.response) {
-                    authService.logout(); navigate('/login');
-                 }
-                 else if (err.response && err.response.status === 403) {
-                     if (!error) setError("Görevleri görüntüleme yetkiniz yok.");
-                 }
+                 console.error("Görev hatası:", err);
             } finally {
                 setIsLoadingTasks(false);
             }
@@ -209,229 +96,77 @@ function ProjectDetailPage() {
         fetchTasks();
     }, [projectId, navigate, refreshTrigger]); 
 
-    // --- Fonksiyonlar ---
-    const handleLogout = () => { authService.logout(); navigate('/login'); };
     const handleDataChanged = () => { setRefreshTrigger(prev => prev + 1); };
-    const findTaskById = (taskId) => { return tasks.find(task => task.id.toString() === taskId.toString()); };
     const handleTaskClick = (taskId) => { setSelectedTaskId(taskId); };
     const handleDetailModalClose = () => { setSelectedTaskId(null); };
 
-    // --- SÜRÜKLEME BİTTİĞİNDE ÇALIŞAN ANA FONKSİYON ---
     const handleDragEnd = (event) => {
         const { active, over } = event;
         if (!over) return; 
-
-        const activeId = active.id.toString();
         const activeTask = active.data.current?.task; 
         if (!activeTask) return;
-        
         const overId = over.id.toString();
         let newStatus;
+        if (over.data.current?.type === 'Column') newStatus = overId; 
+        else if (over.data.current?.type === 'Task') newStatus = over.data.current.task.status; 
+        else return;
         
-        if (over.data.current?.type === 'Column') {
-            newStatus = overId; 
-        } 
-        else if (over.data.current?.type === 'Task') {
-            newStatus = over.data.current.task.status; 
-        } 
-        else {
-             return; 
-        }
-        
-        if (activeTask.status === newStatus) {
-            return; 
-        }
+        if (activeTask.status === newStatus) return; 
 
-        // Optimistic Update
-        setTasks((prevTasks) => {
-            return prevTasks.map(task => 
-                task.id === activeTask.id 
-                    ? { ...task, status: newStatus } 
-                    : task
-            );
-        });
-
-        // API Update
-        taskService.updateTaskStatus(activeTask.id, newStatus)
-            .then(() => {
-                console.log(`API: Görev ${activeTask.id} durumu ${newStatus} olarak güncellendi.`);
-            })
-            .catch((err) => {
-                // Rollback
+        setTasks((prevTasks) => prevTasks.map(task => task.id === activeTask.id ? { ...task, status: newStatus } : task));
+        taskService.updateTaskStatus(activeTask.id, newStatus).catch((err) => {
                 console.error("Görev durumu güncellenemedi:", err);
-                setTasks((prevTasks) => {
-                    return prevTasks.map(task => 
-                        task.id === activeTask.id
-                            ? { ...task, status: activeTask.status } // Orijinal status'a geri dön
-                            : task
-                    );
-                });
+                setTasks((prevTasks) => prevTasks.map(task => task.id === activeTask.id ? { ...task, status: activeTask.status } : task));
                 setError("Görev durumu güncellenemedi. Sayfayı yenileyin.");
             });
     };
-    // --------------------------------------------------
 
-    // --- İçeriği Gösterme Fonksiyonu (KANBAN) ---
     const renderKanbanContent = () => {
         const isLoading = isLoadingProject || isLoadingTasks;
         if (isLoading) return <div className="flex flex-1 items-center justify-center py-10"><p className="text-xl font-medium dark:text-white">Proje Yükleniyor...</p></div>;
         if (error) return <div className="flex flex-1 items-center justify-center py-10"><p className="text-xl font-medium text-red-500">{error}</p></div>;
         if (!project) return <div className="flex flex-1 items-center justify-center py-10"><p className="text-xl font-medium dark:text-white">Proje bulunamadı.</p></div>;
 
-        const columns = [
-            { title: "Beklemede", status: "beklemede" },
-            { title: "Yapılıyor", status: "yapılıyor" },
-            { title: "Tamamlandı", status: "tamamlandı" },
-        ];
+        const columns = [{ title: "Beklemede", status: "beklemede" }, { title: "Yapılıyor", status: "yapılıyor" }, { title: "Tamamlandı", status: "tamamlandı" }];
         
         return (
-            <DndContext 
-                sensors={sensors}
-                collisionDetection={closestCenter} 
-                onDragEnd={handleDragEnd}
-            >
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {columns.map(column => (
-                        <KanbanColumn
-                            key={column.status}
-                            id={column.status}
-                            title={column.title}
-                            tasks={tasks.filter(t => t.status === column.status)}
-                            onTaskClick={handleTaskClick} 
-                        />
-                    ))}
+                    {columns.map(column => <KanbanColumn key={column.status} id={column.status} title={column.title} tasks={tasks.filter(t => t.status === column.status)} onTaskClick={handleTaskClick} />)}
                 </div>
             </DndContext>
         );
     };
     
-    // --- ANA JSX ---
     return (
-        <>
-            {/* Modallar */}
-            <NewTaskModal
-                show={isTaskModalOpen} 
-                onClose={() => setIsTaskModalOpen(false)} 
-                onTaskCreated={handleDataChanged} 
-                projectId={projectId} 
-                members={project?.memberships || []} 
-            />
-            <NewMemberModal
-                show={isMemberModalOpen}
-                onClose={() => setIsMemberModalOpen(false)}
-                onMemberAdded={handleDataChanged} 
-                projectId={projectId}
-            />
-            <TaskDetailModal
-                show={selectedTaskId !== null} 
-                taskId={selectedTaskId}
-                members={project?.memberships || []} 
-                onClose={handleDetailModalClose}
-                onTaskUpdated={handleDataChanged} 
-                onTaskDeleted={handleDataChanged} 
-            />
+        <MainLayout>
+            <NewTaskModal show={isTaskModalOpen} onClose={() => setIsTaskModalOpen(false)} onTaskCreated={handleDataChanged} projectId={projectId} />
+            <NewMemberModal show={isMemberModalOpen} onClose={() => setIsMemberModalOpen(false)} onMemberAdded={handleDataChanged} projectId={projectId}/>
+            <TaskDetailModal show={selectedTaskId !== null} taskId={selectedTaskId} members={project?.memberships || []} onClose={handleDetailModalClose} onTaskUpdated={handleDataChanged} onTaskDeleted={handleDataChanged} />
         
-            <div className="flex h-screen w-full flex-row bg-background-light dark:bg-background-dark">
-                
-                {/* --- SideNavBar (GÜNCELLENDİ) --- */}
-                <aside className="flex h-full w-64 flex-shrink-0 flex-col bg-[#1A202C] p-4 text-gray-300">
-                    <div className="flex flex-col gap-4">
-                        <div className="flex items-center gap-3 px-3 py-2">
-                            <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuDMaQEOq8ZXnL4TNNc2M9HDqWC0UymPRVZTqc-y7GUqVYYpaMye5aYBVcigxuvtjmgquWhXPFsWvAVoVy1f20M9aQ9B3wj5SWOM0nzCV1y7KrWHvXrdRk4MBXga-QouQFeHlDgfejieT5kWfMzZJk3FOx2UIzoW1boU2xBkM9ufYCrSx1ZeMszeuGbF5MEYycngcjF8Zf1YE0MWEHuD3Z_j_wLfvgNZpKWj0IumpsrRt9cbXH39KOU08_4J8WdM5E3NWo_YLM-NmN5q")'}}></div>
-                            <div className="flex flex-col">
-                                <h1 className="text-white text-base font-medium leading-normal">ProjectFlow</h1>
-                                <p className="text-gray-400 text-sm font-normal leading-normal">SaaS</p>
-                            </div>
-                        </div>
-                        <nav className="mt-6 flex flex-col gap-2">
-                            <Link className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-white/10" to="/dashboard">
-                                <span className="material-symbols-outlined">folder</span> 
-                                <p className="text-sm font-medium leading-normal">Projeler</p>
-                            </Link>
-                            <Link className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-white/10" to="/tasks">
-                                <span className="material-symbols-outlined">checklist</span>
-                                <p className="text-sm font-medium leading-normal">Görevler</p>
-                            </Link>
-                            {/* YENİ "NOTLAR" LİNKİ EKLENDİ */}
-                            <Link className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-white/10" to="/notes">
-                                <span className="material-symbols-outlined">description</span>
-                                <p className="text-sm font-medium leading-normal">Notlar</p>
-                            </Link>
-                        </nav>
+            <div className="flex flex-1 flex-col p-6 lg:p-10 overflow-y-auto">
+                <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+                    <h1 className="text-[#140d1b] dark:text-white text-3xl font-black leading-tight tracking-tight min-w-72">
+                        {project?.name || (isLoadingProject ? "..." : "Proje Bulunamadı")}
+                    </h1>
+                    <div className="flex gap-3 flex-wrap justify-start">
+                        <Link to={`/projects/${projectId}/analysis`} className="flex items-center gap-2 min-w-[40px] cursor-pointer justify-center overflow-hidden rounded-lg h-10 px-3 border border-gray-300 dark:border-gray-700 bg-white dark:bg-zinc-800 text-gray-800 dark:text-white text-sm font-bold hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors" title="Analiz">
+                            <span className="material-symbols-outlined text-indigo-600 dark:text-indigo-400">analytics</span>
+                        </Link>
+                        <button className="flex items-center gap-2 min-w-[84px] cursor-pointer justify-center overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold hover:bg-primary/90 disabled:opacity-50" disabled={isLoadingProject || isLoadingTasks || !project} onClick={() => setIsTaskModalOpen(true)}>
+                            <span className="material-symbols-outlined">add_circle</span> <span>Görev Ekle</span>
+                        </button>
+                        <button className="flex items-center gap-2 min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 border border-gray-300 dark:border-gray-700 bg-white dark:bg-zinc-800 text-gray-800 dark:text-white text-sm font-bold hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50" disabled={isLoadingProject || isLoadingTasks || !project} onClick={() => setIsMemberModalOpen(true)}>
+                            <span className="material-symbols-outlined">person_add</span> <span>Üye Ekle</span>
+                        </button>
+                        <Link to={`/projects/${projectId}/settings`} className={`flex items-center gap-2 min-w-[40px] cursor-pointer justify-center overflow-hidden rounded-lg h-10 px-3 border border-gray-300 dark:border-gray-700 bg-white dark:bg-zinc-800 text-gray-800 dark:text-white text-sm font-bold hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors ${(isLoadingProject || !project) ? 'opacity-50 pointer-events-none' : ''}`}>
+                            <span className="material-symbols-outlined">settings</span>
+                        </Link>
                     </div>
-                </aside>
-                
-                {/* --- Ana İçerik --- */}
-                <main className="flex h-full flex-1 flex-col overflow-y-auto">
-                    
-                    {/* --- TopNavBar (GÜNCELLENDİ) --- */}
-                    <header className="flex items-center justify-end whitespace-nowrap border-b border-solid border-gray-200 dark:border-gray-700 px-10 py-3">
-                        <div className="flex items-center gap-4">
-                            {/* Avatar ve Kullanıcı Adı sarmalayıcısı (GÜNCELLENDİ) */}
-                            <div className="flex items-center gap-3">
-                                <Link to="/profile" className="flex-shrink-0">
-                                    <div 
-                                        className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 hover:ring-2 hover:ring-primary hover:ring-offset-2 dark:hover:ring-offset-background-dark transition-all" 
-                                        style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida/public/AB6AXuCIKaMVIy_vHJrmeXzOgXNEwAjF_R8RhlC7X266Ixi69gQ6R3OGJFa98odvapm0SkDjpbztSGn03fsEBUyPPbm2GEwWda0KS94y_BxI-IMUwZmsbB1ABcz7nYt_abpf8Lsgy8imcm54lgWFptL5FtcfN0gU7Moo3oJ3_P4ADt1D3A5AetUcdaAwusWyKSxtbvnk_ldGVSiJcCBXt9hzW_USM3spsi8_c-LnOVL7aKxEz0DxXnanGK3PRoT0EMH0isCTXWT4Hl3vhk3R")'}}
-                                    ></div> 
-                                </Link>
-                                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{userName}</span>
-                            </div>
-                            <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-primary/90" onClick={handleLogout}>
-                                <span className="truncate">Çıkış Yap</span>
-                            </button>
-                        </div>
-                    </header>
-                    
-                    {/* --- Sayfa İçeriği --- */}
-                    <div className="flex flex-1 flex-col p-6 lg:p-10">
-                        <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
-                            <h1 className="text-[#140d1b] dark:text-white text-4xl font-black leading-tight tracking-tight min-w-72">
-                                {project?.name || (isLoadingProject ? "Yükleniyor..." : "Proje Bulunamadı")}
-                            </h1>
-                            <div className="flex gap-3 flex-wrap justify-start">
-                                {/* New "Proje Analizi ve Raporlar" Button */}
-                                <Link 
-                                    to={`/projects/${projectId}/analysis`}
-                                    className="flex items-center gap-2 min-w-[40px] cursor-pointer justify-center overflow-hidden rounded-lg h-10 px-3 border border-gray-300 dark:border-gray-700 bg-white dark:bg-zinc-800 text-gray-800 dark:text-white text-sm font-bold hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
-                                    title="Proje Analizi ve Raporlar"
-                                >
-                                    <span className="material-symbols-outlined text-indigo-600 dark:text-indigo-400">analytics</span>
-                                </Link>
-                                {/* Existing Buttons */}
-                                <button 
-                                    className="flex items-center gap-2 min-w-[84px] max-w-[480px] cursor-pointer justify-center overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 disabled:opacity-50"
-                                    disabled={isLoadingProject || isLoadingTasks || !project} 
-                                    onClick={() => setIsTaskModalOpen(true)} 
-                                >
-                                    <span className="material-symbols-outlined">add_circle</span>
-                                    <span className="truncate">Yeni Görev Ekle</span>
-                                </button>
-                                <button 
-                                    className="flex items-center gap-2 min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 border border-gray-300 dark:border-gray-700 bg-white dark:bg-zinc-800 text-gray-800 dark:text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50"
-                                    disabled={isLoadingProject || isLoadingTasks || !project}
-                                    onClick={() => setIsMemberModalOpen(true)} 
-                                >
-                                    <span className="material-symbols-outlined">person_add</span>
-                                    <span className="truncate">Üye Ekle</span>
-                                </button>
-                                <Link 
-                                    to={`/projects/${projectId}/settings`}
-                                    className={`flex items-center gap-2 min-w-[40px] max-w-[480px] cursor-pointer justify-center overflow-hidden rounded-lg h-10 px-3 border border-gray-300 dark:border-gray-700 bg-white dark:bg-zinc-800 text-gray-800 dark:text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors ${
-                                        (isLoadingProject || !project) ? 'opacity-50 pointer-events-none' : '' 
-                                    }`}
-                                    aria-disabled={isLoadingProject || !project}
-                                    tabIndex={(isLoadingProject || !project) ? -1 : undefined}
-                                >
-                                    <span className="material-symbols-outlined">settings</span>
-                                </Link>
-                            </div>
-                        </div>
-                        {renderKanbanContent()}
-                    </div>
-                </main>
+                </div>
+                {renderKanbanContent()}
             </div>
-        </>
+        </MainLayout>
     );
 }
 

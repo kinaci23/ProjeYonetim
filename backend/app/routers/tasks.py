@@ -3,87 +3,46 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app.database import get_db
-# Gerekli tüm modeller
-from app.models import task_model, user_model
-from app.models.project_member_model import ProjectMember, ProjectRole
-# Güncellenmiş Task şemaları (task_schemas.TaskUpdate dahil)
+from app.models import user_model
+from app.models.project_member_model import ProjectMember
+# Şemalar
 from app.schemas import task_schemas
-# Güvenlik fonksiyonları
+# Servisler
 from app.services.auth_service import get_current_user, get_project_membership
+from app.services.task_service import task_service # Yeni servisimizi import ettik
 
 router = APIRouter(
     prefix="/api", 
     tags=["Tasks"]
 )
 
-# --- YARDIMCI GÜVENLİK FONKSİYONU ---
-def get_task_and_verify_membership(
-    task_id: int, 
-    db: Session, 
-    current_user: user_model.User
-) -> task_model.Task:
-    """
-    1. Görevi ID ile bulur.
-    2. Mevcut kullanıcının o görevin projesine üye olup olmadığını kontrol eder.
-    3. Güvenlik kontrolünden geçerse 'task' nesnesini, geçmezse hata döndürür.
-    """
-    db_task = db.query(task_model.Task).filter(task_model.Task.id == task_id).first()
+# --- ENDPOINTLER ---
 
-    if db_task is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Görev bulunamadı")
-    
-    # Güvenlik Kontrolü: Kullanıcı bu görevin projesine üye mi?
-    membership = db.query(ProjectMember).filter(
-        ProjectMember.project_id == db_task.project_id,
-        ProjectMember.user_id == current_user.id
-    ).first()
-    
-    if not membership:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Bu göreve erişim yetkiniz yok (proje üyesi değilsiniz)."
-        )
-    
-    return db_task # Güvenlikten geçti, görevi döndür
-
-# -----------------------------------------------------------------
-# MEVCUT ENDPOINT (Trello Panosu) (Değişiklik yok)
-# -----------------------------------------------------------------
 @router.get("/projects/{project_id}/tasks", response_model=List[task_schemas.TaskDisplay])
 def get_tasks_for_project(
-    membership: ProjectMember = Depends(get_project_membership)
+    project_id: int,
+    membership: ProjectMember = Depends(get_project_membership),
+    db: Session = Depends(get_db)
 ):
     """
     Belirli bir projedeki TÜM görevleri listeler.
-    Sadece o projenin üyeleri (admin veya member) erişebilir.
     """
-    return membership.project.tasks
+    # Yetki kontrolü (get_project_membership) zaten yapıldı.
+    # İş mantığı servisten çağrılıyor:
+    return task_service.get_tasks_by_project(db, project_id)
 
-# -----------------------------------------------------------------
-# MEVCUT ENDPOINT (Trello Kartı Oluşturma) (Değişiklik yok)
-# -----------------------------------------------------------------
 @router.post("/projects/{project_id}/tasks", response_model=task_schemas.TaskDisplay, status_code=status.HTTP_201_CREATED)
 def create_task_in_project(
+    project_id: int,
     task_data: task_schemas.TaskCreate, 
     membership: ProjectMember = Depends(get_project_membership),
     db: Session = Depends(get_db)
 ):
     """
     Belirli bir projeye yeni bir görev oluşturur.
-    Sadece o projenin üyeleri (admin veya member) erişebilir.
     """
-    db_task = task_model.Task(
-        **task_data.dict(),
-        project_id=membership.project_id 
-    )
-    db.add(db_task)
-    db.commit()
-    db.refresh(db_task)
-    return db_task
+    return task_service.create_task(db, task_data, project_id)
 
-# -----------------------------------------------------------------
-# YENİ ENDPOINT (GÖREV DETAYINI GETİRME) (ADIM 6.1)
-# -----------------------------------------------------------------
 @router.get("/tasks/{task_id}", response_model=task_schemas.TaskDisplay)
 def get_task_by_id(
     task_id: int,
@@ -92,44 +51,31 @@ def get_task_by_id(
 ):
     """
     Tek bir görevin detaylarını ID ile getirir.
-    Sadece o görevin ait olduğu projenin üyeleri erişebilir.
     """
-    db_task = get_task_and_verify_membership(task_id=task_id, db=db, current_user=current_user)
-    return db_task
+    # Servis hem görevi bulur hem yetkiyi kontrol eder
+    return task_service.verify_task_access(db, task_id, current_user.id)
 
-# -----------------------------------------------------------------
-# YENİ ENDPOINT (GÖREV GÜNCELLEME) (ADIM 6.1)
-# -----------------------------------------------------------------
 @router.put("/tasks/{task_id}", response_model=task_schemas.TaskDisplay)
 def update_task_details(
     task_id: int,
-    task_data: task_schemas.TaskUpdate, # Yeni şemamızı kullanıyoruz
+    task_data: task_schemas.TaskUpdate, 
     db: Session = Depends(get_db),
     current_user: user_model.User = Depends(get_current_user)
 ):
     """
-    Bir görevin detaylarını (başlık, açıklama, tarih, atanan kişi) günceller.
-    'status' (durum) bu endpoint ile DEĞİŞTİRİLMEZ.
-    Sadece o görevin ait olduğu projenin üyeleri erişebilir.
+    Bir görevin detaylarını günceller.
     """
-    db_task = get_task_and_verify_membership(task_id=task_id, db=db, current_user=current_user)
+    # 1. Görevi ve yetkiyi al
+    db_task = task_service.verify_task_access(db, task_id, current_user.id)
     
-    update_data = task_data.dict(exclude_unset=True) 
-
+    # 2. Veriyi hazırla
+    update_data = task_data.dict(exclude_unset=True)
     if not update_data:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Güncellenecek veri gönderilmedi.")
 
-    for key, value in update_data.items():
-        setattr(db_task, key, value) 
-    
-    db.add(db_task)
-    db.commit()
-    db.refresh(db_task)
-    return db_task
+    # 3. Servis ile güncelle
+    return task_service.update_task(db, db_task, update_data)
 
-# -----------------------------------------------------------------
-# YENİ ENDPOINT (GÖREV SİLME) (ADIM 6.1)
-# -----------------------------------------------------------------
 @router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_task(
     task_id: int,
@@ -137,18 +83,12 @@ def delete_task(
     current_user: user_model.User = Depends(get_current_user)
 ):
     """
-    Bir görevi ID ile siler.
-    Sadece o görevin ait olduğu projenin üyeleri erişebilir.
+    Bir görevi siler.
     """
-    db_task = get_task_and_verify_membership(task_id=task_id, db=db, current_user=current_user)
-    
-    db.delete(db_task)
-    db.commit()
+    db_task = task_service.verify_task_access(db, task_id, current_user.id)
+    task_service.delete_task(db, db_task)
     return None 
 
-# -----------------------------------------------------------------
-# MEVCUT ENDPOINT (Sürükle-Bırak) (GÜVENLİK GÜNCELLEMESİ)
-# -----------------------------------------------------------------
 @router.put("/tasks/{task_id}/status", response_model=task_schemas.TaskDisplay)
 def update_task_status(
     task_id: int,
@@ -157,20 +97,11 @@ def update_task_status(
     current_user: user_model.User = Depends(get_current_user)
 ):
     """
-    Bir görevin durumunu (status) günceller (Sürükle-Bırak).
-    Sadece o görevin ait olduğu projenin üyeleri güncelleyebilir.
+    Bir görevin durumunu (status) günceller.
     """
-    # Güvenlik kontrolü ve görevi alma (Yardımcı fonksiyonu kullanıyoruz)
-    db_task = get_task_and_verify_membership(task_id=task_id, db=db, current_user=current_user)
-    
-    db_task.status = status_update.status
-    db.commit()
-    db.refresh(db_task)
-    return db_task
+    db_task = task_service.verify_task_access(db, task_id, current_user.id)
+    return task_service.update_task(db, db_task, {"status": status_update.status})
 
-# -----------------------------------------------------------------
-# MEVCUT ENDPOINT (Benim Görevlerim) (Değişiklik yok)
-# -----------------------------------------------------------------
 @router.get("/tasks/my-tasks", response_model=List[task_schemas.TaskDisplay])
 def get_my_assigned_tasks(
     db: Session = Depends(get_db), 
@@ -179,5 +110,4 @@ def get_my_assigned_tasks(
     """
     Giriş yapmış kullanıcının kendisine atanmış TÜM görevleri listeler.
     """
-    tasks = db.query(task_model.Task).filter(task_model.Task.assignee_id == current_user.id).all()
-    return tasks
+    return task_service.get_assigned_tasks(db, current_user.id)
