@@ -12,18 +12,67 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, useDro
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-// --- YARDIMCI BİLEŞENLER (TaskCard, KanbanColumn) ---
-// (Bu kısımlar değişmediği için kod kalabalığı yapmasın diye kısalttım, 
-// ama sen dosyadaki TaskCard ve KanbanColumn fonksiyonlarını KORU veya tekrar ekle)
+// --- GÜNCELLENMİŞ TASK KART BİLEŞENİ ---
 function TaskCard({ task, onTaskClick }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id.toString(), data: { type: 'Task', task: task } }); 
-    const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.7 : 1, zIndex: isDragging ? 100 : 1 };
+    
+    const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 100 : 1 };
+
+    // Öncelik Renkleri
+    const priorityColors = {
+        'Düşük': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+        'Orta': 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+        'Yüksek': 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+        'Kritik': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+    };
+
     return (
-        <div ref={setNodeRef} style={style} {...attributes} {...listeners} onClick={() => onTaskClick(task.id.toString())} className="block bg-white dark:bg-[#1A202C] rounded-lg p-4 shadow-md cursor-grab active:cursor-grabbing transition-all duration-200 hover:shadow-lg hover:scale-[1.02]">
-            <h4 className="font-bold text-[#1A202C] dark:text-white">{task.title}</h4>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{task.description || "Açıklama girilmemiş."}</p>
-            {task.due_date && <p className="text-xs text-gray-500 dark:text-gray-500 mt-3">Son Teslim: {new Date(task.due_date).toLocaleDateString('tr-TR')}</p>}
-            <p className="text-xs text-primary mt-1">Atanan: {task.assignee_id ? `Kullanıcı ID ${task.assignee_id}` : 'Yok'}</p>
+        <div ref={setNodeRef} style={style} {...attributes} {...listeners} onClick={() => onTaskClick(task.id.toString())} 
+            className="group relative flex flex-col gap-3 bg-white dark:bg-[#1E293B] rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700/50 cursor-grab active:cursor-grabbing hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-200">
+            
+            {/* Üst Etiketler (Category & Priority) */}
+            <div className="flex justify-between items-start">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded">
+                    {task.category || 'GENEL'}
+                </span>
+                {task.priority && (
+                    <span className={`text-[10px] font-bold px-2 py-1 rounded ${priorityColors[task.priority] || 'bg-gray-100 text-gray-600'}`}>
+                        {task.priority}
+                    </span>
+                )}
+            </div>
+
+            {/* Başlık */}
+            <h4 className="font-semibold text-gray-800 dark:text-gray-200 text-sm leading-snug line-clamp-2">
+                {task.title}
+            </h4>
+
+            {/* Alt Bilgiler (Puan & Tarih & Atanan) */}
+            <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-700 pt-3 mt-1">
+                
+                {/* Sol: Efor Puanı */}
+                <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400" title="Efor Puanı">
+                    <span className="material-symbols-outlined text-[16px]">fitness_center</span>
+                    <span className="text-xs font-bold">{task.story_points || 1}</span>
+                </div>
+
+                {/* Orta: Tarih (Varsa) */}
+                {task.due_date && (
+                    <div className={`flex items-center gap-1 text-xs ${new Date(task.due_date) < new Date() ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
+                        <span className="material-symbols-outlined text-[16px]">event</span>
+                        <span>{new Date(task.due_date).toLocaleDateString('tr-TR', {day: 'numeric', month: 'short'})}</span>
+                    </div>
+                )}
+
+                {/* Sağ: Avatar (Varsa) */}
+                {task.assignee_id ? (
+                    <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 flex items-center justify-center text-[10px] font-bold border border-white dark:border-gray-800 ring-1 ring-gray-100 dark:ring-gray-700">
+                        ID{task.assignee_id}
+                    </div>
+                ) : (
+                    <span className="material-symbols-outlined text-gray-300 text-[20px]">account_circle</span>
+                )}
+            </div>
         </div>
     );
 }
@@ -156,7 +205,7 @@ function ProjectDetailPage() {
                         <button className="flex items-center gap-2 min-w-[84px] cursor-pointer justify-center overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold hover:bg-primary/90 disabled:opacity-50" disabled={isLoadingProject || isLoadingTasks || !project} onClick={() => setIsTaskModalOpen(true)}>
                             <span className="material-symbols-outlined">add_circle</span> <span>Görev Ekle</span>
                         </button>
-                        <button className="flex items-center gap-2 min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 border border-gray-300 dark:border-gray-700 bg-white dark:bg-zinc-800 text-gray-800 dark:text-white text-sm font-bold hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50" disabled={isLoadingProject || isLoadingTasks || !project} onClick={() => setIsMemberModalOpen(true)}>
+                        <button className="flex items-center gap-2 min-w-[84px] cursor-pointer justify-center overflow-hidden rounded-lg h-10 px-4 border border-gray-300 dark:border-gray-700 bg-white dark:bg-zinc-800 text-gray-800 dark:text-white text-sm font-bold hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50" disabled={isLoadingProject || isLoadingTasks || !project} onClick={() => setIsMemberModalOpen(true)}>
                             <span className="material-symbols-outlined">person_add</span> <span>Üye Ekle</span>
                         </button>
                         <Link to={`/projects/${projectId}/settings`} className={`flex items-center gap-2 min-w-[40px] cursor-pointer justify-center overflow-hidden rounded-lg h-10 px-3 border border-gray-300 dark:border-gray-700 bg-white dark:bg-zinc-800 text-gray-800 dark:text-white text-sm font-bold hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors ${(isLoadingProject || !project) ? 'opacity-50 pointer-events-none' : ''}`}>

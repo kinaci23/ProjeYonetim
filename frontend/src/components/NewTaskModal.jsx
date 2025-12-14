@@ -1,41 +1,34 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-// HATA DÜZELTMESİ: vite.config.js'te tanımladığımız '@/' alias'ını kullanıyoruz
 import authService from '@/services/authService';
-import taskService from '@/services/taskService'; // Az önce güncellediğimiz servis
+import taskService from '@/services/taskService';
 
-/**
- * Bu bileşen 4 prop (komut) alır:
- * - show: (true/false) Modal'ın görünüp görünmeyeceği
- * - onClose: (fonksiyon) "İptal" butonuna basıldığında veya dışarı tıklandığında çalışır
- * - onTaskCreated: (fonksiyon) Görev başarıyla oluşturulduğunda çalışır
- * - projectId: (string) Görevin hangi projeye ekleneceğini bilmek için
- */
 function NewTaskModal({ show, onClose, onTaskCreated, projectId }) {
     
     // --- State'ler ---
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
-    const [dueDate, setDueDate] = useState(''); // Tarih (string)
+    const [dueDate, setDueDate] = useState('');
     
+    // YENİ STATE'LER (Öncelik, Kategori, Puan)
+    const [priority, setPriority] = useState('Orta');
+    const [category, setCategory] = useState('Diğer');
+    const [storyPoints, setStoryPoints] = useState(1);
+
     const [error, setError] = useState(null); 
     const [isLoading, setIsLoading] = useState(false); 
     const navigate = useNavigate();
 
-    // --- Fonksiyonlar ---
-    
-    // Modalı kapat ve form alanlarını temizle
+    // Fibonacci Dizisi
+    const fibonacciPoints = [1, 2, 3, 5, 8, 13, 21];
+
     const handleClose = () => {
-        setTitle('');
-        setDescription('');
-        setDueDate('');
+        setTitle(''); setDescription(''); setDueDate('');
+        setPriority('Orta'); setCategory('Diğer'); setStoryPoints(1);
         setError(null);
         onClose(); 
     };
 
-    /**
-     * Form gönderildiğinde (Oluştur'a basıldığında) çalışır.
-     */
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
@@ -46,138 +39,111 @@ function NewTaskModal({ show, onClose, onTaskCreated, projectId }) {
         }
         setIsLoading(true);
 
-        // Backend'e gönderilecek veriyi hazırla
         const taskData = {
-            title: title,
-            description: description || null, // Boşsa null gönder
-            // Eğer tarih seçilmediyse (boş string "" ise) null gönder,
-            // seçildiyse ("2025-10-31" gibi) o string'i gönder.
-            due_date: dueDate || null 
+            title,
+            description: description || null, 
+            due_date: dueDate || null,
+            // YENİ VERİLER
+            priority,
+            category,
+            story_points: parseInt(storyPoints)
         };
 
         try {
-            // Servisi çağır (hangi projeye, hangi veriyle)
             await taskService.createTask(projectId, taskData);
-            
-            onTaskCreated(); // Ana sayfaya (ProjectDetailPage) haber ver
-            handleClose();   // Modalı kapat ve temizle
-
+            onTaskCreated(); 
+            handleClose();   
         } catch (err) {
-            console.error("Görev oluşturma hatası:", err);
-            
-            // 401 (Token süresi doldu) hatası
+            console.error("Hata:", err);
             if (err.response && err.response.status === 401) {
-                authService.logout(); 
-                handleClose();        
-                navigate('/login');   
+                authService.logout(); handleClose(); navigate('/login');   
             } else {
-                // Diğer hatalar (örn: 500, 403)
-                setError(err.response?.data?.detail || "Görev oluşturulamadı. Lütfen tekrar deneyin.");
+                setError("Görev oluşturulamadı.");
             }
         } finally {
             setIsLoading(false); 
         }
     };
 
-    // --- Gösterim (Render) ---
-    if (!show) {
-        return null; // 'show' prop'u false ise modalı render etme (gösterme)
-    }
+    if (!show) return null; 
 
-    // Stitch'ten gelen HTML, JSX'e dönüştürüldü (class -> className, for -> htmlFor vb.)
     return (
-        // Modal Overlay (Dışarı tıklayınca kapat)
-        <div 
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 dark:bg-black/70"
-            onClick={handleClose} 
-        >
-            {/* Modal Kartı (İçeriye tıklayınca kapatma) */}
-            <div 
-                className="relative flex w-full max-w-lg flex-col gap-4 rounded-xl bg-white dark:bg-background-dark p-6 sm:p-8 shadow-2xl"
-                onClick={(e) => e.stopPropagation()} 
-            >
-                <h2 className="text-[#141118] dark:text-white tracking-light text-[32px] font-bold leading-tight">
-                    Yeni Görev Oluştur
-                </h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={handleClose}>
+            <div className="relative w-full max-w-2xl flex-col gap-6 rounded-2xl bg-white dark:bg-[#1A202C] p-8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
                 
-                {/* Form */}
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                <div className="flex justify-between items-center border-b border-gray-100 dark:border-gray-700 pb-4 mb-4">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Yeni Görev Kartı</h2>
+                    <div className="px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 text-xs font-bold rounded-full">AGILE</div>
+                </div>
+                
+                <form onSubmit={handleSubmit} className="flex flex-col gap-5">
                     
-                    {/* Görev Başlığı */}
-                    <label className="flex flex-col flex-1 min-w-40">
-                        <p className="text-[#141118] dark:text-gray-300 text-base font-medium leading-normal pb-2">Görev Başlığı</p>
-                        <div className="group flex w-full flex-1 items-stretch rounded-lg border border-[#e0dbe6] dark:border-gray-700 bg-white dark:bg-gray-800/50 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/30 transition-all duration-200">
-                            <div className="text-[#755f8c] dark:text-gray-400 flex items-center justify-center pl-[15px] border-r border-[#e0dbe6] dark:border-gray-700 pr-2 group-focus-within:text-primary">
-                                <span className="material-symbols-outlined">task_alt</span>
-                            </div>
-                            <input 
-                                className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden text-[#141118] dark:text-white focus:outline-0 focus:ring-0 border-0 bg-transparent h-14 placeholder:text-[#755f8c] dark:placeholder:text-gray-500 p-[15px] text-base font-normal leading-normal" 
-                                placeholder="Görev Başlığı" 
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                autoFocus
-                            />
-                        </div>
-                    </label>
-                    
-                    {/* Açıklama */}
-                    <label className="flex flex-col flex-1 min-w-40">
-                        <p className="text-[#141118] dark:text-gray-300 text-base font-medium leading-normal pb-2">Açıklama (opsiyonel)</p>
-                        <div className="group flex w-full flex-1 items-stretch rounded-lg border border-[#e0dbe6] dark:border-gray-700 bg-white dark:bg-gray-800/50 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/30 transition-all duration-200">
-                            <div className="text-[#755f8c] dark:text-gray-400 flex items-start pt-[15px] justify-center pl-[15px] border-r border-[#e0dbe6] dark:border-gray-700 pr-2 group-focus-within:text-primary">
-                                <span className="material-symbols-outlined">description</span>
-                            </div>
-                            <textarea 
-                                className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden text-[#141118] dark:text-white focus:outline-0 focus:ring-0 border-0 bg-transparent min-h-36 placeholder:text-[#755f8c] dark:placeholder:text-gray-500 p-[15px] text-base font-normal leading-normal" 
-                                placeholder="Görevinizle ilgili daha fazla ayrıntı ekleyin..."
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                            ></textarea>
-                        </div>
-                    </label>
+                    {/* Başlık */}
+                    <div>
+                        <label className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 block">Görev Başlığı</label>
+                        <input className="form-input w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-3 focus:ring-2 focus:ring-indigo-500" 
+                            placeholder="Örn: Login sayfasını tasarla" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+                    </div>
 
-                    {/* Son Teslim Tarihi */}
-                    <label className="flex flex-col flex-1 min-w-40">
-                        <p className="text-[#141118] dark:text-gray-300 text-base font-medium leading-normal pb-2">Son Teslim Tarihi (opsiyonel)</p>
-                        <div className="group flex w-full flex-1 items-stretch rounded-lg border border-[#e0dbe6] dark:border-gray-700 bg-white dark:bg-gray-800/50 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/30 transition-all duration-200">
-                            <div className="text-[#755f8c] dark:text-gray-400 flex items-center justify-center pl-[15px] border-r border-[#e0dbe6] dark:border-gray-700 pr-2 group-focus-within:text-primary">
-                                <span className="material-symbols-outlined">calendar_today</span>
+                    {/* Yan Yana 3'lü Seçim: Öncelik - Kategori - Puan */}
+                    <div className="grid grid-cols-3 gap-4">
+                        {/* Öncelik */}
+                        <div>
+                            <label className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 block uppercase">Öncelik</label>
+                            <select className="form-select w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2.5 text-sm"
+                                value={priority} onChange={(e) => setPriority(e.target.value)}>
+                                <option value="Düşük">🟢 Düşük</option>
+                                <option value="Orta">🟡 Orta</option>
+                                <option value="Yüksek">🟠 Yüksek</option>
+                                <option value="Kritik">🔴 Kritik</option>
+                            </select>
+                        </div>
+                        {/* Kategori */}
+                        <div>
+                            <label className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 block uppercase">Departman</label>
+                            <select className="form-select w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2.5 text-sm"
+                                value={category} onChange={(e) => setCategory(e.target.value)}>
+                                <option value="Frontend">Frontend</option>
+                                <option value="Backend">Backend</option>
+                                <option value="Tasarım">Tasarım</option>
+                                <option value="Test">Test</option>
+                                <option value="DevOps">DevOps</option>
+                                <option value="Diğer">Diğer</option>
+                            </select>
+                        </div>
+                        {/* Story Point (Fibonacci) */}
+                        <div>
+                            <label className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 block uppercase">Efor Puanı</label>
+                            <div className="flex items-center gap-2">
+                                <select className="form-select w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2.5 text-sm font-mono"
+                                    value={storyPoints} onChange={(e) => setStoryPoints(e.target.value)}>
+                                    {fibonacciPoints.map(p => <option key={p} value={p}>{p} SP</option>)}
+                                </select>
                             </div>
-                            <input 
-                                className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden text-[#141118] dark:text-white focus:outline-0 focus:ring-0 border-0 bg-transparent h-14 placeholder:text-[#755f8c] dark:placeholder:text-gray-500 p-[15px] text-base font-normal leading-normal" 
-                                type="date"
-                                value={dueDate}
-                                onChange={(e) => setDueDate(e.target.value)}
-                            />
                         </div>
-                    </label>
+                    </div>
                     
-                    {/* Hata Mesajı Alanı */}
-                    {error && (
-                        <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-center text-sm text-red-700 dark:border-red-700 dark:bg-red-900/20 dark:text-red-300">
-                            {error}
+                    {/* Açıklama ve Tarih */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className='md:col-span-2'>
+                            <label className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 block">Açıklama</label>
+                            <textarea className="form-textarea w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-3 h-24 text-sm" 
+                                placeholder="Detayları girin..." value={description} onChange={(e) => setDescription(e.target.value)}></textarea>
                         </div>
-                    )}
+                        <div>
+                            <label className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 block">Son Teslim</label>
+                            <input className="form-input w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2.5 text-sm" 
+                                type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                        </div>
+                    </div>
+
+                    {error && <div className="text-red-500 text-sm bg-red-50 dark:bg-red-900/20 p-2 rounded text-center">{error}</div>}
                     
-                    {/* Buton Grubu */}
-                    <div className="flex justify-end pt-4">
-                        <div className="flex flex-1 gap-3 flex-wrap justify-end sm:flex-none">
-                            <button 
-                                className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-5 bg-[#f2f0f5] dark:bg-white/10 text-[#141118] dark:text-white text-base font-bold leading-normal tracking-[0.015em] hover:bg-gray-200 dark:hover:bg-white/20 transition-colors duration-200"
-                                type="button" // Formu göndermemesi için
-                                onClick={handleClose}
-                                disabled={isLoading}
-                            >
-                                <span className="truncate">İptal</span>
-                            </button>
-                            <button 
-                                className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-5 bg-primary text-white text-base font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-colors duration-200 shadow-md shadow-primary/30 disabled:opacity-70"
-                                type="submit"
-                                disabled={isLoading}
-                            >
-                                <span className="truncate">{isLoading ? "Oluşturuluyor..." : "Oluştur"}</span>
-                            </button>
-                        </div>
+                    <div className="flex justify-end gap-3 pt-2">
+                        <button type="button" onClick={handleClose} className="px-5 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-medium transition-colors">İptal</button>
+                        <button type="submit" disabled={isLoading} className="px-6 py-2.5 rounded-lg bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/30">
+                            {isLoading ? 'Oluşturuluyor...' : 'Görevi Oluştur'}
+                        </button>
                     </div>
                 </form>
             </div>
@@ -186,4 +152,3 @@ function NewTaskModal({ show, onClose, onTaskCreated, projectId }) {
 }
 
 export default NewTaskModal;
-

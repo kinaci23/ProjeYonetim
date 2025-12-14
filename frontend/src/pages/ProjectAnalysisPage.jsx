@@ -7,15 +7,13 @@ import {
 import projectService from '@/services/projectService';
 import taskService from '@/services/taskService';
 import userService from '@/services/userService';
-import authService from '@/services/authService';
-import MainLayout from '../components/MainLayout'; // <-- 1. MainLayout İmport Edildi
+import MainLayout from '@/components/MainLayout';
 
 function ProjectAnalysisPage() {
     const navigate = useNavigate();
     const { projectId } = useParams();
 
-    // --- State'ler (Aynen Korundu) ---
-    const [userName, setUserName] = useState('Kullanıcı');
+    // --- State'ler ---
     const [project, setProject] = useState(null);
     const [stats, setStats] = useState({ total: 0, completed: 0, pending: 0, inProgress: 0, overdue: 0, progress: 0 });
     const [pieData, setPieData] = useState([]);
@@ -29,27 +27,24 @@ function ProjectAnalysisPage() {
         beklemede: '#F59E0B', 
         yapiliyor: '#3B82F6', 
         tamamlandi: '#10B981', 
-        gecikmis: '#EF4444',
-        bos: '#E5E7EB'
+        riskYuksek: '#EF4444',
+        riskOrta: '#F59E0B',
+        riskDusuk: '#10B981'
     };
 
-    // --- Veri Çekme (Aynen Korundu) ---
+    // --- Veri Çekme ---
     useEffect(() => {
         const loadData = async () => {
             setIsLoading(true);
             try {
-                const [userData, projectData, tasksData] = await Promise.all([
-                    userService.getProfile(),
+                const [projectData, tasksData] = await Promise.all([
                     projectService.getProjectById(projectId),
                     taskService.getTasksForProject(projectId)
                 ]);
 
-                if (userData.first_name) setUserName(`${userData.first_name} ${userData.last_name || ''}`);
-                else setUserName(userData.email);
-
                 setProject(projectData);
 
-                // --- HESAPLAMALAR ---
+                // --- İstatistikler ---
                 const total = tasksData.length;
                 const completed = tasksData.filter(t => t.status === 'tamamlandı').length;
                 const pending = tasksData.filter(t => t.status === 'beklemede').length;
@@ -71,6 +66,7 @@ function ProjectAnalysisPage() {
                     { name: 'Tamamlandı', value: completed, color: COLORS.tamamlandi },
                 ]);
 
+                // İş Yükü Grafiği
                 const memberMap = {};
                 projectData.memberships.forEach(m => {
                     const name = m.user.first_name 
@@ -108,32 +104,32 @@ function ProjectAnalysisPage() {
         loadData();
     }, [projectId, navigate]);
 
-    // --- AI Analiz Fonksiyonu ---
+    // --- AI Analiz İsteği ---
     const handleAiAnalyze = async () => {
         setIsAiLoading(true);
         try {
             const result = await projectService.analyzeProject(projectId);
             setAiAnalysis(result.analysis);
         } catch (err) {
-            alert("AI Analizi başarısız.");
+            console.error(err);
+            alert("AI Analizi başarısız. Lütfen daha sonra tekrar deneyin.");
         } finally {
             setIsAiLoading(false);
         }
     };
 
-    // handleLogout fonksiyonunu kaldırdım çünkü artık MainLayout içindeki Header bu işi yapmalı.
+    const getRiskColor = (score) => {
+        if (score < 30) return COLORS.riskDusuk;
+        if (score < 70) return COLORS.riskOrta;
+        return COLORS.riskYuksek;
+    };
 
     if (isLoading) return <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-[#111827] text-gray-500">Yükleniyor...</div>;
 
     return (
         <MainLayout>
-            {/* Main Container
-                h-[calc(100vh-2rem)] veya benzeri bir yükseklik ayarı, 
-                ekranın taşmasını engelleyip dashboard hissi verir.
-            */}
             <div className="flex flex-col h-[calc(100vh-6rem)] w-full p-4 lg:p-6 overflow-hidden gap-4">
                 
-                {/* --- Sayfa İçi Header (Breadcrumb & Başlık) --- */}
                 <div className="flex justify-between items-center shrink-0">
                     <div className="flex items-center gap-3">
                         <Link to={`/projects/${projectId}`} className="text-gray-500 hover:text-indigo-600 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
@@ -142,181 +138,132 @@ function ProjectAnalysisPage() {
                         <div>
                             <h2 className="text-xl font-bold text-gray-800 dark:text-white leading-tight flex items-center gap-2">
                                 {project?.name}
-                                <span className="text-xs font-normal text-gray-400 border border-gray-200 dark:border-gray-700 px-2 py-0.5 rounded-full">Analiz</span>
+                                <span className="text-xs font-normal text-gray-400 border border-gray-200 dark:border-gray-700 px-2 py-0.5 rounded-full">360° Analiz</span>
                             </h2>
-                            <div className="flex items-center gap-2 mt-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">Canlı Veri Akışı</p>
-                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* --- Dashboard Grid (Mevcut Yapı Korundu) --- */}
-                <div className="flex-1 min-h-0">
-                    <div className="grid grid-cols-12 grid-rows-[auto_1fr] gap-4 h-full">
-                        
-                        {/* 1. SATIR: KPI Kartları (4 Kolonlu) */}
-                        <div className="col-span-12 grid grid-cols-2 lg:grid-cols-4 gap-4 h-auto shrink-0">
-                            {/* KPI 1: Toplam */}
-                            <div className="bg-white dark:bg-[#1F2937] p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-between">
-                                <div className="flex justify-between items-start">
-                                    <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">Toplam Görev</p>
-                                    <span className="material-symbols-outlined text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 p-1 rounded-md text-lg">assignment</span>
-                                </div>
-                                <p className="text-2xl lg:text-3xl font-black text-gray-800 dark:text-white mt-2">{stats.total}</p>
+                <div className="flex-1 min-h-0 grid grid-cols-12 gap-6 overflow-y-auto pb-10">
+                    
+                    {/* SOL: Grafikler (8/12) */}
+                    <div className="col-span-12 lg:col-span-8 flex flex-col gap-6">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="bg-white dark:bg-[#1F2937] p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm">
+                                <p className="text-xs text-gray-500 font-bold uppercase">Toplam İş</p>
+                                <p className="text-2xl font-black text-gray-800 dark:text-white mt-1">{stats.total}</p>
                             </div>
-                            
-                            {/* KPI 2: Tamamlanan */}
-                            <div className="bg-white dark:bg-[#1F2937] p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-between">
-                                <div className="flex justify-between items-start">
-                                    <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">Tamamlanan</p>
-                                    <span className="material-symbols-outlined text-green-500 bg-green-50 dark:bg-green-900/30 p-1 rounded-md text-lg">check_circle</span>
-                                </div>
-                                <p className="text-2xl lg:text-3xl font-black text-gray-800 dark:text-white mt-2">{stats.completed}</p>
+                            <div className="bg-white dark:bg-[#1F2937] p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm">
+                                <p className="text-xs text-green-500 font-bold uppercase">Biten</p>
+                                <p className="text-2xl font-black text-gray-800 dark:text-white mt-1">{stats.completed}</p>
                             </div>
-                            
-                            {/* KPI 3: Risk (Gecikmiş) */}
-                            <div className="bg-white dark:bg-[#1F2937] p-4 rounded-xl shadow-sm border border-red-100 dark:border-red-900/30 flex flex-col justify-between relative overflow-hidden">
-                                <div className="absolute right-0 top-0 w-16 h-16 bg-red-500/10 rounded-bl-full -mr-4 -mt-4"></div>
-                                <div className="flex justify-between items-start z-10">
-                                    <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">Gecikmiş (Risk)</p>
-                                    <span className="material-symbols-outlined text-red-500 bg-red-50 dark:bg-red-900/30 p-1 rounded-md text-lg">warning</span>
-                                </div>
-                                <p className="text-2xl lg:text-3xl font-black text-red-600 dark:text-red-400 z-10 mt-2">{stats.overdue}</p>
+                            <div className="bg-white dark:bg-[#1F2937] p-4 rounded-xl border border-red-100 dark:border-red-900/30 shadow-sm">
+                                <p className="text-xs text-red-500 font-bold uppercase">Riskli</p>
+                                <p className="text-2xl font-black text-red-600 dark:text-red-400 mt-1">{stats.overdue}</p>
                             </div>
-                            
-                            {/* KPI 4: İlerleme */}
-                            <div className="bg-white dark:bg-[#1F2937] p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-between">
-                                <div className="flex justify-between items-start">
-                                    <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">İlerleme</p>
-                                    <span className={`font-bold text-lg ${stats.progress === 100 ? 'text-green-600' : 'text-indigo-600'}`}>%{stats.progress}</span>
-                                </div>
-                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-4">
-                                    <div 
-                                        className={`h-2 rounded-full transition-all duration-1000 ${stats.progress === 100 ? 'bg-green-500' : 'bg-indigo-500'}`} 
-                                        style={{ width: `${stats.progress}%` }}
-                                    ></div>
-                                </div>
+                            <div className="bg-white dark:bg-[#1F2937] p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm">
+                                <p className="text-xs text-indigo-500 font-bold uppercase">Başarı</p>
+                                <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1">%{stats.progress}</p>
                             </div>
                         </div>
 
-                        {/* 2. SATIR: Grafikler ve AI (Split View) */}
-                        
-                        {/* SOL SÜTUN: Grafikler (Grid 8/12) */}
-                        <div className="col-span-12 lg:col-span-8 grid grid-rows-2 gap-4 min-h-0">
-                            
-                            {/* Üst Grafik: İş Yükü (Bar) */}
-                            <div className="bg-white dark:bg-[#1F2937] p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col min-h-0">
-                                <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-2 flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-base text-gray-400">bar_chart</span>
-                                    Ekip İş Yükü
-                                </h3>
-                                <div className="flex-1 w-full min-h-0">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={workloadData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#6B7280', fontSize: 11}} />
-                                            <YAxis axisLine={false} tickLine={false} tick={{fill: '#6B7280', fontSize: 11}} />
-                                            <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
-                                            <Bar dataKey="gorevSayisi" name="Görev" fill="#8b5cf6" radius={[4, 4, 0, 0]} barSize={30} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-80">
+                            <div className="bg-white dark:bg-[#1F2937] p-5 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col">
+                                <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-4">Ekip İş Yükü</h3>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={workloadData}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.2} />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 10}} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 10}} />
+                                        <Tooltip cursor={{fill: 'transparent'}} contentStyle={{borderRadius:'8px', border:'none', backgroundColor:'#1F2937', color:'#fff'}} />
+                                        <Bar dataKey="gorevSayisi" fill="#8b5cf6" radius={[4, 4, 0, 0]} barSize={20} />
+                                    </BarChart>
+                                </ResponsiveContainer>
                             </div>
 
-                            {/* Alt Grafik: Durum Dağılımı (Pie) */}
-                            <div className="bg-white dark:bg-[#1F2937] p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col min-h-0">
-                                <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-2 flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-base text-gray-400">pie_chart</span>
-                                    Görev Durumları
-                                </h3>
-                                <div className="flex-1 w-full min-h-0 flex items-center justify-center">
-                                    {stats.total > 0 ? (
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie
-                                                    data={pieData}
-                                                    cx="50%" cy="50%"
-                                                    innerRadius={40} outerRadius={60}
-                                                    paddingAngle={5}
-                                                    dataKey="value"
-                                                >
-                                                    {pieData.map((entry, index) => (
-                                                        <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
-                                                    ))}
-                                                </Pie>
-                                                <Tooltip contentStyle={{ borderRadius: '8px', border: 'none' }} itemStyle={{ fontSize: '12px' }} />
-                                                <Legend verticalAlign="middle" align="right" layout="vertical" iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '12px' }}/>
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    ) : (
-                                        <p className="text-gray-400 text-sm">Veri yok</p>
-                                    )}
-                                </div>
+                            <div className="bg-white dark:bg-[#1F2937] p-5 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col">
+                                <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-4">Görev Dağılımı</h3>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={5} dataKey="value">
+                                            {pieData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip contentStyle={{borderRadius:'8px', border:'none', backgroundColor:'#1F2937', color:'#fff'}} />
+                                        <Legend verticalAlign="bottom" iconType="circle" iconSize={8} />
+                                    </PieChart>
+                                </ResponsiveContainer>
                             </div>
                         </div>
-
-                        {/* SAĞ SÜTUN: AI Asistan (Grid 4/12) - Tam Yükseklik */}
-                        <div className="col-span-12 lg:col-span-4 bg-gradient-to-br from-indigo-600 to-violet-700 dark:from-[#1F2937] dark:to-[#111827] rounded-xl shadow-lg p-1 flex flex-col overflow-hidden">
-                            <div className="h-full bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm rounded-lg flex flex-col overflow-hidden">
-                                
-                                {/* AI Header */}
-                                <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800 shrink-0">
-                                    <div>
-                                        <h3 className="font-bold text-indigo-900 dark:text-indigo-200 flex items-center gap-2">
-                                            <span className="material-symbols-outlined">smart_toy</span>
-                                            AI Danışman
-                                        </h3>
-                                        <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">GEMINI 2.5 ANALIZI</p>
-                                    </div>
-                                    <button 
-                                        onClick={handleAiAnalyze}
-                                        disabled={isAiLoading}
-                                        className="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-lg shadow-md transition-all disabled:opacity-50"
-                                        title="Yeniden Analiz Et"
-                                    >
-                                        {isAiLoading ? <span className="animate-spin material-symbols-outlined text-lg">sync</span> : <span className="material-symbols-outlined text-lg">auto_awesome</span>}
-                                    </button>
-                                </div>
-
-                                {/* AI Content (Scrollable Area) */}
-                                <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-indigo-200 dark:scrollbar-thumb-gray-600">
-                                    {!aiAnalysis ? (
-                                        <div className="h-full flex flex-col items-center justify-center text-center opacity-60">
-                                            <span className="material-symbols-outlined text-5xl mb-2 text-indigo-300">analytics</span>
-                                            <p className="text-sm font-medium">Analiz bekliyor...</p>
-                                            <p className="text-xs mt-1">Butona tıklayarak yapay zeka raporunu oluşturun.</p>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            {/* Özet */}
-                                            <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg border-l-4 border-amber-400">
-                                                <h4 className="font-bold text-amber-800 dark:text-amber-200 text-sm mb-1 flex items-center gap-1">
-                                                    <span className="material-symbols-outlined text-base">lightbulb</span> Durum Özeti
-                                                </h4>
-                                                <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">{aiAnalysis.summary}</p>
-                                            </div>
-
-                                            {/* Öneriler Listesi */}
-                                            <div className="space-y-2">
-                                                <h4 className="font-bold text-gray-700 dark:text-gray-200 text-sm flex items-center gap-1 sticky top-0 bg-white/95 dark:bg-gray-800/95 py-2 z-10">
-                                                    <span className="material-symbols-outlined text-base text-green-500">task_alt</span> Aksiyon Planı
-                                                </h4>
-                                                {aiAnalysis.recommendations.map((rec, i) => (
-                                                    <div key={i} className="flex gap-2 text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/30 p-2 rounded border border-gray-100 dark:border-gray-700">
-                                                        <span className="font-bold text-indigo-600 dark:text-indigo-400">{i+1}.</span>
-                                                        <span>{rec}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
                     </div>
+
+                    {/* SAĞ: AI Panel (4/12) */}
+                    <div className="col-span-12 lg:col-span-4 flex flex-col h-full bg-gradient-to-b from-indigo-900 to-[#111827] rounded-2xl shadow-xl border border-indigo-800 text-white overflow-hidden relative">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600 rounded-full blur-[100px] opacity-20 pointer-events-none"></div>
+
+                        <div className="p-6 border-b border-white/10 flex justify-between items-center z-10">
+                            <div>
+                                <h3 className="font-bold text-lg flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-yellow-400">psychology</span>
+                                    AI Danışman
+                                </h3>
+                                <p className="text-xs text-indigo-300"></p>
+                            </div>
+                            <button onClick={handleAiAnalyze} disabled={isAiLoading} className="bg-white/10 hover:bg-white/20 p-2 rounded-lg transition-colors disabled:opacity-50">
+                                {isAiLoading ? <span className="animate-spin material-symbols-outlined">sync</span> : <span className="material-symbols-outlined">play_arrow</span>}
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6 space-y-6 z-10 scrollbar-thin scrollbar-thumb-white/20">
+                            {!aiAnalysis ? (
+                                <div className="h-full flex flex-col items-center justify-center text-center text-indigo-300 opacity-70">
+                                    <span className="material-symbols-outlined text-5xl mb-4">analytics</span>
+                                    <p>Yapay zeka analizi için<br/>butona tıklayın.</p>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* SKOR KARTLARI (YENİ) */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="bg-white/5 p-3 rounded-xl border border-white/10 text-center">
+                                            <p className="text-xs text-indigo-300 uppercase tracking-wider mb-1">Risk Skoru</p>
+                                            <div className="text-3xl font-black" style={{ color: getRiskColor(aiAnalysis.risk_score) }}>
+                                                {aiAnalysis.risk_score}
+                                            </div>
+                                        </div>
+                                        <div className="bg-white/5 p-3 rounded-xl border border-white/10 text-center">
+                                            <p className="text-xs text-indigo-300 uppercase tracking-wider mb-1">Performans</p>
+                                            <div className="text-3xl font-black text-blue-400">
+                                                {aiAnalysis.performance_score}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <h4 className="text-sm font-bold text-yellow-400 flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-sm">summarize</span> Durum Özeti
+                                        </h4>
+                                        <p className="text-sm text-gray-300 leading-relaxed bg-white/5 p-3 rounded-lg border border-white/5">
+                                            {aiAnalysis.summary}
+                                        </p>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <h4 className="text-sm font-bold text-green-400 flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-sm">tips_and_updates</span> Aksiyon Planı
+                                        </h4>
+                                        {aiAnalysis.recommendations.map((rec, i) => (
+                                            <div key={i} className="flex gap-3 text-sm text-gray-300 bg-white/5 p-3 rounded-lg border border-white/5 hover:bg-white/10 transition-colors">
+                                                <span className="font-bold text-indigo-400">{i+1}.</span>
+                                                <span>{rec}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </MainLayout>

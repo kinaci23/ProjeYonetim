@@ -1,43 +1,45 @@
 from pydantic import BaseModel
-from app.models.task_model import TaskStatus
+from app.models.task_model import TaskStatus, TaskPriority, TaskCategory
 from datetime import datetime 
 from typing import Optional 
 
-# --- Görev Şemaları ---
-
+# --- Ortak Alanlar ---
 class TaskBase(BaseModel):
-    """Tüm görev şemalarının paylaştığı temel alanlar."""
     title: str
     description: Optional[str] = None
     due_date: Optional[datetime] = None
+    # YENİ ALANLAR
+    priority: TaskPriority = TaskPriority.orta
+    story_points: int = 1
+    category: TaskCategory = TaskCategory.diger
 
+# --- Oluşturma Şeması ---
 class TaskCreate(TaskBase):
-    """Yeni görev oluştururken (Değişmedi)."""
     assignee_id: Optional[int] = None 
 
+# --- Güncelleme Şeması ---
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    due_date: Optional[datetime] = None
+    assignee_id: Optional[int] = None 
+    # YENİLERİN GÜNCELLENMESİ
+    priority: Optional[TaskPriority] = None
+    story_points: Optional[int] = None
+    category: Optional[TaskCategory] = None
+    # completed_at'i manuel güncellemeyeceğiz, status değişince otomatik olacak
+
+# --- Status Güncelleme (Sürükle-Bırak) ---
 class TaskStatusUpdate(BaseModel):
-    """Sadece 'status' güncellemek için (Sürükle-Bırak) (Değişmedi)."""
     status: TaskStatus 
 
+# --- Görüntüleme Şeması ---
 class TaskDisplay(TaskBase):
-    """API'den görev verisi dönerken (Değişmedi)."""
     id: int
     status: TaskStatus
+    completed_at: Optional[datetime] = None # Bunu da dönelim
     project_id: int
     assignee_id: Optional[int]
     
     class Config:
         from_attributes = True
-
-# --- YENİ EKLENEN ŞEMA (ADIM 6.1) ---
-class TaskUpdate(BaseModel):
-    """
-    Bir görevin detaylarını (başlık, açıklama vb.) güncellerken
-    kullanıcıdan alınacak veri. Tüm alanlar opsiyoneldir.
-    """
-    title: Optional[str] = None
-    description: Optional[str] = None
-    due_date: Optional[datetime] = None
-    assignee_id: Optional[int] = None 
-    # Not: 'status' (durum) bu endpoint ile güncellenmez,
-    # o sürükle-bırak (TaskStatusUpdate) endpoint'i ile yapılır.

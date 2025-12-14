@@ -17,9 +17,7 @@ class TaskService:
 
     @staticmethod
     def verify_task_access(db: Session, task_id: int, user_id: int) -> Task:
-        """
-        Kullanıcının göreve erişim yetkisi olup olmadığını (proje üyeliği üzerinden) kontrol eder.
-        """
+        """Kullanıcının göreve erişim yetkisi olup olmadığını kontrol eder."""
         task = TaskService.get_task_by_id(db, task_id)
         
         membership = db.query(ProjectMember).filter(
@@ -55,6 +53,19 @@ class TaskService:
 
     @staticmethod
     def update_task(db: Session, task: Task, update_data: dict) -> Task:
+        # --- OTOMATİK TARİH MANTIĞI ---
+        # Eğer statü güncelleniyorsa kontrol et:
+        if "status" in update_data:
+            new_status = update_data["status"]
+            
+            # Eğer 'tamamlandı' olduysa -> Şu anki zamanı bas
+            if new_status == TaskStatus.tamamlandı:
+                task.completed_at = datetime.now()
+            # Eğer 'tamamlandı'dan geri alındıysa -> Tarihi sil
+            elif task.status == TaskStatus.tamamlandı and new_status != TaskStatus.tamamlandı:
+                task.completed_at = None
+        # -----------------------------
+
         for key, value in update_data.items():
             setattr(task, key, value)
         
@@ -68,5 +79,4 @@ class TaskService:
         db.delete(task)
         db.commit()
 
-# Servis örneğini dışa aktar (Dependency Injection veya doğrudan kullanım için)
 task_service = TaskService()

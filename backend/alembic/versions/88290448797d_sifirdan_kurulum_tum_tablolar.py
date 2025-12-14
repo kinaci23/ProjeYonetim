@@ -1,8 +1,8 @@
-"""Revizyon: Proje bazli yetkilendirme ve ProjectMember tablosu
+"""Sifirdan kurulum tum tablolar
 
-Revision ID: c3e84393235e
+Revision ID: 88290448797d
 Revises: 
-Create Date: 2025-10-29 20:37:28.729632
+Create Date: 2025-12-14 22:15:42.685194
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'c3e84393235e'
+revision: str = '88290448797d'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -33,10 +33,23 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('email', sa.String(), nullable=False),
     sa.Column('hashed_password', sa.String(), nullable=False),
+    sa.Column('first_name', sa.String(), nullable=True),
+    sa.Column('last_name', sa.String(), nullable=True),
+    sa.Column('title', sa.String(), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
     op.create_index(op.f('ix_users_id'), 'users', ['id'], unique=False)
+    op.create_table('notes',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('title', sa.String(), nullable=False),
+    sa.Column('content', sa.Text(), nullable=True),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_notes_id'), 'notes', ['id'], unique=False)
+    op.create_index(op.f('ix_notes_title'), 'notes', ['title'], unique=False)
     op.create_table('project_members',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('project_id', sa.Integer(), nullable=False),
@@ -51,7 +64,13 @@ def upgrade() -> None:
     op.create_table('tasks',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('title', sa.String(), nullable=False),
+    sa.Column('description', sa.Text(), nullable=True),
     sa.Column('status', sa.Enum('beklemede', 'yapılıyor', 'tamamlandı', name='taskstatus'), nullable=False),
+    sa.Column('due_date', sa.DateTime(), nullable=True),
+    sa.Column('completed_at', sa.DateTime(), nullable=True),
+    sa.Column('priority', sa.Enum('dusuk', 'orta', 'yuksek', 'kritik', name='taskpriority'), nullable=False),
+    sa.Column('story_points', sa.Integer(), nullable=False),
+    sa.Column('category', sa.Enum('frontend', 'backend', 'tasarim', 'test', 'devops', 'diger', name='taskcategory'), nullable=False),
     sa.Column('project_id', sa.Integer(), nullable=True),
     sa.Column('assignee_id', sa.Integer(), nullable=True),
     sa.ForeignKeyConstraint(['assignee_id'], ['users.id'], ),
@@ -71,6 +90,9 @@ def downgrade() -> None:
     op.drop_table('tasks')
     op.drop_index(op.f('ix_project_members_id'), table_name='project_members')
     op.drop_table('project_members')
+    op.drop_index(op.f('ix_notes_title'), table_name='notes')
+    op.drop_index(op.f('ix_notes_id'), table_name='notes')
+    op.drop_table('notes')
     op.drop_index(op.f('ix_users_id'), table_name='users')
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.drop_table('users')
