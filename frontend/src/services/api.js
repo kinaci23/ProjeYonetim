@@ -3,7 +3,7 @@ import axios from 'axios';
 // API Adresi: 
 // Canlı ortamda (Vercel) 'VITE_API_URL' değişkenini kullanır.
 // Lokal ortamda ise varsayılan olarak 'http://127.0.0.1:8000' kullanır.
-const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+const API_URL = 'https://projectflow-api-22dz.onrender.com';
 
 // Axios örneği oluştur
 const api = axios.create({
