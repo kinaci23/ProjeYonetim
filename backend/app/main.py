@@ -23,10 +23,10 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins, # Sadece bu adreslerden gelen isteklere izin ver
-    allow_credentials=True, # Kimlik bilgileri (cookie, token vb.) içeren isteklere izin ver
-    allow_methods=["*"],    # Tüm HTTP metotlarına (GET, POST, PUT, DELETE) izin ver
-    allow_headers=["*"],    # Tüm başlıklara (Header) izin ver
+    allow_origins=["*"], 
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 # --------------------------------------------------
 
