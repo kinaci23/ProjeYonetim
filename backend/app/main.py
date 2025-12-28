@@ -18,12 +18,12 @@ app = FastAPI(title="Proje Yönetim Sistemi API")
 # React (Vite) varsayılan olarak 5173'te çalışır.
 origins = [
     "http://localhost:5173",
-    "http://localhost",
+    "https://proje-yonetim.vercel.app/login",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=origins, 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
