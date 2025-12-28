@@ -8,7 +8,6 @@ class TaskBase(BaseModel):
     title: str
     description: Optional[str] = None
     due_date: Optional[datetime] = None
-    # YENİ ALANLAR
     priority: TaskPriority = TaskPriority.orta
     story_points: int = 1
     category: TaskCategory = TaskCategory.diger
@@ -23,23 +22,40 @@ class TaskUpdate(BaseModel):
     description: Optional[str] = None
     due_date: Optional[datetime] = None
     assignee_id: Optional[int] = None 
-    # YENİLERİN GÜNCELLENMESİ
     priority: Optional[TaskPriority] = None
     story_points: Optional[int] = None
     category: Optional[TaskCategory] = None
-    # completed_at'i manuel güncellemeyeceğiz, status değişince otomatik olacak
 
-# --- Status Güncelleme (Sürükle-Bırak) ---
+# --- Status Güncelleme ---
 class TaskStatusUpdate(BaseModel):
     status: TaskStatus 
 
-# --- Görüntüleme Şeması ---
+# --- Görüntüleme Şeması (Temel) ---
 class TaskDisplay(TaskBase):
     id: int
     status: TaskStatus
-    completed_at: Optional[datetime] = None # Bunu da dönelim
+    completed_at: Optional[datetime] = None
     project_id: int
     assignee_id: Optional[int]
+    
+    class Config:
+        from_attributes = True
+
+# --- YENİ: Proje Bilgisi İçeren Şema (MY TASKS İçin) ---
+
+class ProjectInfo(BaseModel):
+    id: int
+    name: str
+    
+    class Config:
+        from_attributes = True
+
+class TaskWithProject(TaskDisplay):
+    """
+    Standart görev verisine ek olarak 'project' objesini de içerir.
+    422 Hatasını önlemek için Optional yapıyoruz.
+    """
+    project: Optional[ProjectInfo] = None
     
     class Config:
         from_attributes = True

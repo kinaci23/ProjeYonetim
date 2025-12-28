@@ -29,3 +29,5 @@ class User(Base):
     # 3. Bu kullanıcının sahip olduğu notlar
     # (Kullanıcı silinirse, notları da silinsin -> cascade)
     notes = relationship("Note", back_populates="owner", cascade="all, delete-orphan")
+
+    notifications = relationship("Notification", back_populates="recipient", cascade="all, delete-orphan")

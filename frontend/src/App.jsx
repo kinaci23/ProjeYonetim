@@ -1,5 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast'; // <-- YENİ IMPORT
 
 import LoginPage from './pages/LoginPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
@@ -8,38 +9,45 @@ import ProjectDetailPage from './pages/ProjectDetailPage.jsx';
 import ProjectSettingsPage from './pages/ProjectSettingsPage.jsx'; 
 import ProfilePage from './pages/ProfilePage.jsx';
 import NotesPage from './pages/NotesPage.jsx';
-
-// --- EKSİK OLAN IMPORT BURADA ---
 import ProjectAnalysisPage from './pages/ProjectAnalysisPage.jsx'; 
+import MyTasksPage from './pages/MyTasksPage.jsx';
 
 function App() {
   return (
     <div className="App w-full h-full">
+      {/* Toast Ayarları */}
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#333',
+            color: '#fff',
+          },
+          success: {
+            style: {
+              background: '#10B981', // Yeşil
+            },
+          },
+          error: {
+            style: {
+              background: '#EF4444', // Kırmızı
+            },
+          },
+        }}
+      />
+      
       <Routes>
         <Route path="/" element={<Navigate to="/login" />} />
-        
-        {/* Auth Sayfaları */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} /> 
-        
-        {/* Ana Dashboard */}
         <Route path="/dashboard" element={<DashboardPage />} />
-        
-        {/* Proje Detay */}
         <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
-
-        {/* Proje Ayarları */}
         <Route path="/projects/:projectId/settings" element={<ProjectSettingsPage />} />
-
-        {/* Profil Sayfası */}
         <Route path="/profile" element={<ProfilePage />} />
-
-        {/* Notlar Sayfası */}
         <Route path="/notes" element={<NotesPage />} />
-
-        {/* --- EKSİK OLAN ROTA BURADA --- */}
         <Route path="/projects/:projectId/analysis" element={<ProjectAnalysisPage />} />
-
+        <Route path="/tasks" element={<MyTasksPage />} />
       </Routes>
     </div>
   )

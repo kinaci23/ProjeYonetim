@@ -6,6 +6,7 @@ from app.models.project_model import Project
 from app.models.user_model import User
 from app.models.project_member_model import ProjectMember, ProjectRole
 from app.schemas import project_schemas, project_member_schemas
+from app.services.notification_service import notification_service
 
 class ProjectService:
     
@@ -111,6 +112,15 @@ class ProjectService:
         )
         db.add(new_member)
         db.commit()
+
+        project_name = db.query(Project).filter(Project.id == project_id).first().name
+        notification_service.create_notification(
+            db, 
+            user_to_add.id, # Yeni eklenen üyeye git
+            "Yeni Proje Üyeliği", 
+            f"'{project_name}' projesine üye olarak eklendiniz."
+        )
+        
         db.refresh(new_member)
         return new_member
 

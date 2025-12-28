@@ -30,6 +30,12 @@ const deleteTask = async (taskId) => {
     return response.data; 
 };
 
+const getMyTasks = async () => {
+    // /api/tasks/my-tasks adresine istek atar
+    const response = await api.get('/api/tasks/my-tasks');
+    return response.data;
+};
+
 export default {
     getTasksForProject,
     createTask,
@@ -37,4 +43,5 @@ export default {
     getTaskById,
     updateTaskDetails,
     deleteTask,
+    getMyTasks,
 };

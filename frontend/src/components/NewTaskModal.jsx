@@ -3,28 +3,30 @@ import { useNavigate } from 'react-router-dom';
 import authService from '@/services/authService';
 import taskService from '@/services/taskService';
 
-function NewTaskModal({ show, onClose, onTaskCreated, projectId }) {
+// members prop'unu ekledik
+function NewTaskModal({ show, onClose, onTaskCreated, projectId, members = [] }) {
     
     // --- State'ler ---
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [dueDate, setDueDate] = useState('');
-    
-    // YENİ STATE'LER (Öncelik, Kategori, Puan)
     const [priority, setPriority] = useState('Orta');
     const [category, setCategory] = useState('Diğer');
     const [storyPoints, setStoryPoints] = useState(1);
+    
+    // YENİ: Atanan Kişi State'i
+    const [assigneeId, setAssigneeId] = useState(''); 
 
     const [error, setError] = useState(null); 
     const [isLoading, setIsLoading] = useState(false); 
     const navigate = useNavigate();
 
-    // Fibonacci Dizisi
     const fibonacciPoints = [1, 2, 3, 5, 8, 13, 21];
 
     const handleClose = () => {
         setTitle(''); setDescription(''); setDueDate('');
         setPriority('Orta'); setCategory('Diğer'); setStoryPoints(1);
+        setAssigneeId(''); // Resetle
         setError(null);
         onClose(); 
     };
@@ -43,10 +45,11 @@ function NewTaskModal({ show, onClose, onTaskCreated, projectId }) {
             title,
             description: description || null, 
             due_date: dueDate || null,
-            // YENİ VERİLER
             priority,
             category,
-            story_points: parseInt(storyPoints)
+            story_points: parseInt(storyPoints),
+            // YENİ: Backend'e gönderilecek ID
+            assignee_id: assigneeId ? parseInt(assigneeId) : null
         };
 
         try {
@@ -85,8 +88,8 @@ function NewTaskModal({ show, onClose, onTaskCreated, projectId }) {
                             placeholder="Örn: Login sayfasını tasarla" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
                     </div>
 
-                    {/* Yan Yana 3'lü Seçim: Öncelik - Kategori - Puan */}
-                    <div className="grid grid-cols-3 gap-4">
+                    {/* Yan Yana 3'lü Seçim */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {/* Öncelik */}
                         <div>
                             <label className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 block uppercase">Öncelik</label>
@@ -111,29 +114,46 @@ function NewTaskModal({ show, onClose, onTaskCreated, projectId }) {
                                 <option value="Diğer">Diğer</option>
                             </select>
                         </div>
-                        {/* Story Point (Fibonacci) */}
+                        {/* Story Point */}
                         <div>
                             <label className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 block uppercase">Efor Puanı</label>
-                            <div className="flex items-center gap-2">
-                                <select className="form-select w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2.5 text-sm font-mono"
-                                    value={storyPoints} onChange={(e) => setStoryPoints(e.target.value)}>
-                                    {fibonacciPoints.map(p => <option key={p} value={p}>{p} SP</option>)}
-                                </select>
-                            </div>
+                            <select className="form-select w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2.5 text-sm font-mono"
+                                value={storyPoints} onChange={(e) => setStoryPoints(e.target.value)}>
+                                {fibonacciPoints.map(p => <option key={p} value={p}>{p} SP</option>)}
+                            </select>
                         </div>
                     </div>
                     
-                    {/* Açıklama ve Tarih */}
+                    {/* Açıklama */}
+                    <div>
+                        <label className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 block">Açıklama</label>
+                        <textarea className="form-textarea w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-3 h-20 text-sm" 
+                            placeholder="Detayları girin..." value={description} onChange={(e) => setDescription(e.target.value)}></textarea>
+                    </div>
+
+                    {/* Tarih ve Atanan Kişi (Yan Yana) */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className='md:col-span-2'>
-                            <label className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 block">Açıklama</label>
-                            <textarea className="form-textarea w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-3 h-24 text-sm" 
-                                placeholder="Detayları girin..." value={description} onChange={(e) => setDescription(e.target.value)}></textarea>
-                        </div>
                         <div>
                             <label className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 block">Son Teslim</label>
                             <input className="form-input w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2.5 text-sm" 
                                 type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                        </div>
+                        
+                        {/* YENİ: Atanan Kişi Seçimi */}
+                        <div>
+                            <label className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 block">Görevi Ata</label>
+                            <select 
+                                className="form-select w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2.5 text-sm"
+                                value={assigneeId}
+                                onChange={(e) => setAssigneeId(e.target.value)}
+                            >
+                                <option value="">Atanmamış</option>
+                                {members.map(member => (
+                                    <option key={member.user.id} value={member.user.id}>
+                                        {member.user.first_name ? `${member.user.first_name} ${member.user.last_name}` : member.user.email}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                     </div>
 

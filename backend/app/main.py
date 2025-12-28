@@ -8,6 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 # YENİ: 'analysis' buraya eklendi
 from app.routers import auth, projects, tasks, users, notes, analysis 
 
+from app.routers import auth, projects, tasks, users, notes, analysis, notifications
+
 app = FastAPI(title="Proje Yönetim Sistemi API")
 
 # --- YENİ EKLENEN BÖLÜM: CORS YAPILANDIRMASI ---
@@ -36,6 +38,7 @@ app.include_router(tasks.router)    # /api/tasks/... endpoint'leri
 app.include_router(users.router)    # /api/users/... endpoint'leri
 app.include_router(notes.router)    # /api/notes/... endpoint'leri
 app.include_router(analysis.router) # YENİ: /api/projects/{id}/analyze endpoint'i
+app.include_router(notifications.router)
 
 # Ana karşılama endpoint'i
 @app.get("/")

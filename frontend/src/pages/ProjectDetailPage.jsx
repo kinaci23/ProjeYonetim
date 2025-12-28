@@ -189,7 +189,7 @@ function ProjectDetailPage() {
     
     return (
         <MainLayout>
-            <NewTaskModal show={isTaskModalOpen} onClose={() => setIsTaskModalOpen(false)} onTaskCreated={handleDataChanged} projectId={projectId} />
+            <NewTaskModal show={isTaskModalOpen} onClose={() => setIsTaskModalOpen(false)} onTaskCreated={handleDataChanged} projectId={projectId} members={project?.memberships || []} />
             <NewMemberModal show={isMemberModalOpen} onClose={() => setIsMemberModalOpen(false)} onMemberAdded={handleDataChanged} projectId={projectId}/>
             <TaskDetailModal show={selectedTaskId !== null} taskId={selectedTaskId} members={project?.memberships || []} onClose={handleDetailModalClose} onTaskUpdated={handleDataChanged} onTaskDeleted={handleDataChanged} />
         

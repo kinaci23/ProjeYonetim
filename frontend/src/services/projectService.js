@@ -1,14 +1,14 @@
-import api from './api'; // Yeni oluşturduğumuz instance
-
-// Not: API_URL ve token ekleme işlemleri artık 'api.js' içinde otomatik yapılıyor.
+import api from './api';
 
 const getProjects = async () => {
-    const response = await api.get('/api/projects');
+    // DÜZELTİLDİ: Sonuna / eklendi
+    const response = await api.get('/api/projects/');
     return response.data;
 };
 
 const createProject = async (name, description) => {
-    const response = await api.post('/api/projects', { name, description });
+    // DÜZELTİLDİ: Sonuna / eklendi
+    const response = await api.post('/api/projects/', { name, description });
     return response.data;
 };
 
@@ -18,7 +18,6 @@ const getProjectById = async (projectId) => {
 };
 
 const addMemberToProject = async (projectId, inviteData) => {
-    // inviteData: { email, role }
     const response = await api.post(`/api/projects/${projectId}/members`, inviteData);
     return response.data; 
 };
